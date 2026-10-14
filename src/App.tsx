@@ -1,147 +1,90 @@
 import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from './assets/vite.svg'
-import cloudflareLogo from './assets/cloudflare.svg'
-import heroImg from './assets/hero.png'
+import type { FormEvent } from 'react'
 import './App.css'
 
+type Reading = {
+  id: number
+  title: string
+  content: string
+}
+
 function App() {
-  const [count, setCount] = useState(0)
-  const [name, setName] = useState('unknown')
+  const [isCreating, setIsCreating] = useState(false)
+  const [title, setTitle] = useState('')
+  const [content, setContent] = useState('')
+  const [readings, setReadings] = useState<Reading[]>([])
+
+  function createReading(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+
+    const trimmedContent = content.trim()
+    if (!trimmedContent) return
+
+    setReadings((current) => [
+      {
+        id: Date.now(),
+        title: title.trim() || 'Sem título',
+        content: trimmedContent,
+      },
+      ...current,
+    ])
+    setTitle('')
+    setContent('')
+    setIsCreating(false)
+  }
 
   return (
-    <>
-      <section id="center">
-        <div className="hero">
-          <img src={heroImg} className="base" width="170" height="179" alt="" />
-          <img src={reactLogo} className="framework" alt="React logo" />
-          <img src={viteLogo} className="vite" alt="Vite logo" />
-        </div>
-        <div>
-          <h1>Get started with Cloudflare</h1>
-          <p>
-            Edit <code>src/App.tsx</code> or <code>worker/index.ts</code> and save to test <code>HMR</code>
-          </p>
-        </div>
-        <ul style={{ display: 'flex', gap: '1rem', listStyle: 'none', padding: 0 }}>
-          <li>
-            <button
-              className="counter"
-              onClick={() => setCount((count) => count + 1)}
-            >
-              Count is {count}
-            </button>
-          </li>
-          <li>
-          <button
-            className="counter"
-            onClick={() => {
-              fetch('/api/')
-                .then((res) => res.json())
-                .then((data) => setName(data.name))
-            }}
-            aria-label='get name'
-          >
-            Name from API is: {name}
-          </button>
-          </li>
-        </ul>
+    <main className="app-shell">
+      <header className="app-header">
+        <a className="brand" href="/" aria-label="Orbe, início">
+          orb<span>e</span>
+        </a>
+      </header>
 
+      <section className="welcome" aria-labelledby="welcome-title">
+        <p className="eyebrow">LEITURAS</p>
+        <h1 id="welcome-title">Seu espaço para ler e lembrar.</h1>
+        <p className="intro">
+          Guarde um texto, retome uma leitura e crie cards quando uma ideia merecer ficar.
+        </p>
 
+        <div className="actions">
+          <button type="button" onClick={() => setIsCreating(true)}>Novo texto</button>
+          <button type="button" className="secondary" disabled>Salvar link para depois</button>
+        </div>
+
+        {isCreating && (
+          <form className="new-reading" onSubmit={createReading}>
+            <label>
+              Título
+              <input value={title} onChange={(event) => setTitle(event.target.value)} placeholder="Ex.: Ideias sobre aprendizado" autoFocus />
+            </label>
+            <label>
+              Texto
+              <textarea value={content} onChange={(event) => setContent(event.target.value)} placeholder="Escreva ou cole algo que deseja ler..." rows={8} required />
+            </label>
+            <div className="form-actions">
+              <button type="submit">Salvar texto</button>
+              <button type="button" className="secondary" onClick={() => setIsCreating(false)}>Cancelar</button>
+            </div>
+          </form>
+        )}
+
+        {readings.length > 0 && (
+          <section className="library" aria-labelledby="library-title">
+            <h2 id="library-title">Sua biblioteca</h2>
+            <ul>
+              {readings.map((reading) => (
+                <li key={reading.id}>
+                  <strong>{reading.title}</strong>
+                  <span>{reading.content}</span>
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
       </section>
-
-      <div className="ticks"></div>
-
-      <section id="next-steps">
-        <div id="docs">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#documentation-icon"></use>
-          </svg>
-          <h2>Documentation</h2>
-          <p>Your questions, answered</p>
-          <ul>
-            <li>
-              <a href="https://vite.dev/" target="_blank">
-                <img className="logo" src={viteLogo} alt="" />
-                Explore Vite
-              </a>
-            </li>
-            <li>
-              <a href="https://react.dev/" target="_blank">
-                <img className="button-icon" src={reactLogo} alt="" />
-                Learn more
-              </a>
-            </li>
-            <li>
-              <a href="https://workers.cloudflare.com/" target="_blank">
-                <img className="button-icon" src={cloudflareLogo} alt="" />
-                Workers Docs
-              </a>
-            </li>
-          </ul>
-        </div>
-        <div id="social">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#social-icon"></use>
-          </svg>
-          <h2>Connect with us</h2>
-          <p>Join the Vite community</p>
-          <ul>
-            <li>
-              <a href="https://github.com/vitejs/vite" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#github-icon"></use>
-                </svg>
-                GitHub
-              </a>
-            </li>
-            <li>
-              <a href="https://chat.vite.dev/" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#discord-icon"></use>
-                </svg>
-                Discord
-              </a>
-            </li>
-            <li>
-              <a href="https://x.com/vite_js" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#x-icon"></use>
-                </svg>
-                X.com
-              </a>
-            </li>
-            <li>
-              <a href="https://bsky.app/profile/vite.dev" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#bluesky-icon"></use>
-                </svg>
-                Bluesky
-              </a>
-            </li>
-          </ul>
-        </div>
-      </section>
-
-      <div className="ticks"></div>
-      <section id="spacer"></section>
-    </>
+    </main>
   )
 }
 
