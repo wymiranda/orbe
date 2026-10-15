@@ -1,0 +1,3 @@
+# Copie este arquivo como .dev.vars para executar o login local.
+# Nunca envie o PIN real ao Git.
+BETA_ACCESS_PIN="defina-um-pin-beta-forte"

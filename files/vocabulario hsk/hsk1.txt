@@ -1,0 +1,301 @@
+id,type,hanzi,pinyin,english,portuguese,hsk_level
+hsk-1-yi-01,character,一,yī,one,um,1
+hsk-1-yixia-01,word,一下,yīxià,a bit; a little,um pouco,1
+hsk-1-yixie-01,word,一些,yīxiē,some; a few,alguns; um pouco,1
+hsk-1-yiban-01,word,一半,yībàn,half,metade,1
+hsk-1-yidianr-01,word,一点儿,yīdiǎnr,a little bit,um pouco,1
+hsk-1-qi-01,character,七,qī,seven,sete,1
+hsk-1-san-01,character,三,sān,three,três,1
+hsk-1-shang-01,character,上,shàng,on; above,em cima; acima,1
+hsk-1-shangwu-01,word,上午,shàngwǔ,morning,manhã,1
+hsk-1-shangxue-01,word,上学,shàngxué,to go to school,ir à escola,1
+hsk-1-shangban-01,word,上班,shàngbān,to go to work,ir ao trabalho,1
+hsk-1-shangke-01,word,上课,shàngkè,to go to class,ir à aula,1
+hsk-1-xia-01,character,下,xià,below; next,abaixo; próximo,1
+hsk-1-xiawu-01,word,下午,xiàwǔ,afternoon,tarde,1
+hsk-1-xiaban-01,word,下班,xiàbān,to finish work,sair do trabalho,1
+hsk-1-xiake-01,word,下课,xiàkè,to finish class,terminar a aula,1
+hsk-1-xiayu-01,word,下雨,xiàyǔ,to rain,chover,1
+hsk-1-bu-01,character,不,bù,no; not,não,1
+hsk-1-bukeqi-01,word,不客气,bùkèqi,you're welcome,de nada,1
+hsk-1-buyao-01,word,不要,bùyào,don't!,não; não faça,1
+hsk-1-dongxi-01,word,东西,dōngxi,thing; stuff,coisa; coisas,1
+hsk-1-liang-01,character,两,liǎng,two; both,dois; duas,1
+hsk-1-ge-01,character,个,gè,classifier,classificador geral,1
+hsk-1-zhongwu-01,word,中午,zhōngwǔ,noon,meio-dia,1
+hsk-1-zhongguo-01,word,中国,Zhōngguó,China,China,1
+hsk-1-zhongxue-01,word,中学,zhōngxué,middle school,escola secundária,1
+hsk-1-zhongxuesheng-01,word,中学生,zhōngxuéshēng,middle-school student,estudante do secundário,1
+hsk-1-zhongwen-01,word,中文,Zhōngwén,Chinese language,língua chinesa,1
+hsk-1-jiu-01,character,九,jiǔ,nine,nove,1
+hsk-1-ye-01,character,也,yě,also; too,também,1
+hsk-1-shu-01,character,书,shū,book,livro,1
+hsk-1-shudian-01,word,书店,shūdiàn,bookstore,livraria,1
+hsk-1-mai-01,character,买,mǎi,to buy,comprar,1
+hsk-1-le-01,character,了,le,completed action marker,partícula de aspecto,1
+hsk-1-shi-01,character,事,shì,thing; matter,coisa; assunto,1
+hsk-1-er-01,character,二,èr,two,dois,1
+hsk-1-wu-01,character,五,wǔ,five,cinco,1
+hsk-1-xie-01,character,些,xiē,some; a few,alguns,1
+hsk-1-ren-01,character,人,rén,person; people,pessoa; pessoas,1
+hsk-1-shenme-01,word,什么,shénme,what?,o quê?,1
+hsk-1-jintian-01,word,今天,jīntiān,today,hoje,1
+hsk-1-jinnian-01,word,今年,jīnnián,this year,este ano,1
+hsk-1-ta-01,character,他,tā,he; him,ele,1
+hsk-1-tamen-01,word,他们,tāmen,they; them,eles,1
+hsk-1-men-01,character,们,men,plural marker,sufixo plural,1
+hsk-1-jian-01,character,件,jiàn,item; classifier,item; peça,1
+hsk-1-xiuxi-01,word,休息,xiūxi,rest,descansar,1
+hsk-1-hui-01,character,会,huì,can; to know how,poder; saber,1
+hsk-1-zhu-01,character,住,zhù,to live; to dwell,morar,1
+hsk-1-ni-01,character,你,nǐ,you,você,1
+hsk-1-nimen-01,word,你们,nǐmen,you (plural),vocês,1
+hsk-1-nihao-01,word,你好,nǐhǎo,hello,olá,1
+hsk-1-pianyi-01,word,便宜,piányi,cheap,barato,1
+hsk-1-zuo-01,character,做,zuò,to do; to make,fazer,1
+hsk-1-zuofan-01,word,做饭,zuòfàn,to cook,cozinhar,1
+hsk-1-erzi-01,word,儿子,érzi,son,filho,1
+hsk-1-yuan-01,character,元,yuán,yuan,yuan,1
+hsk-1-xiansheng-01,word,先生,xiānsheng,gentleman; Mr.; husband,senhor; marido,1
+hsk-1-ba-01,character,八,bā,eight,oito,1
+hsk-1-gongsi-01,word,公司,gōngsī,company,empresa,1
+hsk-1-liu-01,character,六,liù,six,seis,1
+hsk-1-zai-01,character,再,zài,again; then,de novo; então,1
+hsk-1-zaijian-01,word,再见,zàijiàn,goodbye,adeus; tchau,1
+hsk-1-xie-02,character,写,xiě,to write,escrever,1
+hsk-1-leng-01,character,冷,lěng,cold,frio,1
+hsk-1-ji-01,character,几,jǐ,a few; several; how many,alguns; quantos,1
+hsk-1-chuzuche-01,word,出租车,chūzūchē,taxi,táxi,1
+hsk-1-fen-01,character,分,fēn,minute; to divide,minuto; dividir,1
+hsk-1-fenzhong-01,word,分钟,fēnzhōng,minute,minuto,1
+hsk-1-dao-01,character,到,dào,to arrive; to reach,chegar; até,1
+hsk-1-qian-01,character,前,qián,front; before; ago,frente; antes; atrás,1
+hsk-1-baozi-01,word,包子,bāozi,baozi,pãozinho chinês cozido no vapor,1
+hsk-1-yisheng-01,word,医生,yīshēng,doctor,médico,1
+hsk-1-yiyuan-01,word,医院,yīyuàn,hospital,hospital,1
+hsk-1-shi-02,character,十,shí,ten,dez,1
+hsk-1-qian-02,character,千,qiān,thousand,mil,1
+hsk-1-wufan-01,word,午饭,wǔfàn,lunch,almoço,1
+hsk-1-ban-01,character,半,bàn,half,meio; metade,1
+hsk-1-mai-02,character,卖,mài,to sell,vender,1
+hsk-1-qu-01,character,去,qù,to go,ir,1
+hsk-1-qunian-01,word,去年,qùnián,last year,ano passado,1
+hsk-1-kou-01,character,口,kǒu,mouth; classifier,boca; classificador,1
+hsk-1-zhi-01,character,只,zhǐ,only; merely,apenas; só,1
+hsk-1-jiao-01,character,叫,jiào,to call; to be called,chamar; chamar-se,1
+hsk-1-keyi-01,word,可以,kěyǐ,can; may,poder; pode,1
+hsk-1-hao-01,character,号,hào,number; day of month,número; dia,1
+hsk-1-chi-01,character,吃,chī,to eat,comer,1
+hsk-1-tongxue-01,word,同学,tóngxué,classmate,colega de classe,1
+hsk-1-mingzi-01,word,名字,míngzi,name,nome,1
+hsk-1-hou-01,character,后,hòu,after; later; behind,depois; atrás,1
+hsk-1-ma-01,character,吗,ma,question particle,partícula interrogativa,1
+hsk-1-ba-02,character,吧,ba,modal particle,partícula de sugestão,1
+hsk-1-ting-01,character,听,tīng,to listen,ouvir; escutar,1
+hsk-1-tingjian-01,word,听见,tīngjiàn,to hear,ouvir,1
+hsk-1-ne-01,character,呢,ne,particle,partícula,1
+hsk-1-he-01,character,和,hé,and; with,e; com,1
+hsk-1-gege-01,word,哥哥,gēge,older brother,irmão mais velho,1
+hsk-1-na-01,character,哪,nǎ,which; how,qual; onde,1
+hsk-1-nage-01,word,哪个,nǎge,which,qual,1
+hsk-1-naxie-01,word,哪些,nǎxiē,which ones,quais,1
+hsk-1-nar-01,word,哪儿,nǎr,where,onde,1
+hsk-1-nali-01,word,哪里,nǎlǐ,where,onde,1
+hsk-1-chang-01,character,唱,chàng,to sing,cantar,1
+hsk-1-shangdian-01,word,商店,shāngdiàn,store; shop,loja,1
+hsk-1-wei-01,character,喂,wèi,to feed; hello (phone),alimentar; alô,1
+hsk-1-xihuan-01,word,喜欢,xǐhuan,to like,gostar,1
+hsk-1-he-02,character,喝,hē,to drink,beber,1
+hsk-1-si-01,character,四,sì,four,quatro,1
+hsk-1-hui-02,character,回,huí,to return,voltar,1
+hsk-1-guo-01,character,国,guó,country,país,1
+hsk-1-zai-02,character,在,zài,at; in; to be,em; estar,1
+hsk-1-zuo-02,character,坐,zuò,to sit; to take,sentar; pegar,1
+hsk-1-kuai-01,character,块,kuài,piece; yuan,pedaço; yuan,1
+hsk-1-wai-01,character,外,wài,outside; foreign,fora; estrangeiro,1
+hsk-1-waibian-01,word,外边,wàibiān,outside,lado de fora,1
+hsk-1-duo-01,character,多,duō,many; much,muito; muitos,1
+hsk-1-duoshao-01,word,多少,duōshao,how much; how many,quanto; quantos,1
+hsk-1-da-01,character,大,dà,big; large,grande,1
+hsk-1-daxue-01,word,大学,dàxué,university,universidade,1
+hsk-1-daxuesheng-01,word,大学生,dàxuéshēng,university student,universitário,1
+hsk-1-dajia-01,word,大家,dàjiā,everyone,todos,1
+hsk-1-tian-01,character,天,tiān,day; sky,dia; céu,1
+hsk-1-tianqi-01,word,天气,tiānqì,weather,tempo (clima),1
+hsk-1-tai-01,character,太,tài,too; extremely,muito; demais,1
+hsk-1-nv-01,character,女,nǚ,female; woman,mulher; feminino,1
+hsk-1-nver-01,word,女儿,nǚ'ér,daughter,filha,1
+hsk-1-nvshi-01,word,女士,nǚshì,madam; lady,senhora,1
+hsk-1-nvpengyou-01,word,女朋友,nǚpéngyou,girlfriend,namorada,1
+hsk-1-ta-02,character,她,tā,she,ela,1
+hsk-1-tamen-02,word,她们,tāmen,they (females),elas,1
+hsk-1-hao-02,character,好,hǎo,good,bom; bem,1
+hsk-1-haochi-01,word,好吃,hǎochī,tasty,gostoso; delicioso,1
+hsk-1-haoting-01,word,好听,hǎotīng,pleasant to hear,agradável de ouvir,1
+hsk-1-haowanr-01,word,好玩儿,hǎowánr,fun,divertido,1
+hsk-1-haokan-01,word,好看,hǎokàn,good-looking,bonito; interessante,1
+hsk-1-mama-01,word,妈妈,māma,mother,mãe,1
+hsk-1-meimei-01,word,妹妹,mèimei,younger sister,irmã mais nova,1
+hsk-1-jiejie-01,word,姐姐,jiějie,older sister,irmã mais velha,1
+hsk-1-zi-01,character,字,zì,character; word,caractere; palavra,1
+hsk-1-xue-01,character,学,xué,to learn,aprender; estudar,1
+hsk-1-xuexi-01,word,学习,xuéxí,to study,estudar,1
+hsk-1-xuexiao-01,word,学校,xuéxiào,school,escola,1
+hsk-1-xuesheng-01,word,学生,xuésheng,student,estudante,1
+hsk-1-haizi-01,word,孩子,háizi,child,criança,1
+hsk-1-ta-03,character,它,tā,it,ele/ela (neutro),1
+hsk-1-tamen-03,word,它们,tāmen,they (animals/things),eles/elas (neutro),1
+hsk-1-jia-01,character,家,jiā,home; family,casa; família,1
+hsk-1-jiaren-01,word,家人,jiārén,family member,membro da família,1
+hsk-1-dui-01,character,对,duì,correct; towards,correto; para,1
+hsk-1-duibuqi-01,word,对不起,duìbuqǐ,sorry,desculpe,1
+hsk-1-xiao-01,character,小,xiǎo,small,pequeno,1
+hsk-1-xiaoxue-01,word,小学,xiǎoxué,elementary school,escola primária,1
+hsk-1-xiaoxuesheng-01,word,小学生,xiǎoxuéshēng,primary student,aluno do primário,1
+hsk-1-xiaoshi-01,word,小时,xiǎoshí,hour,hora,1
+hsk-1-xiaopengyou-01,word,小朋友,xiǎopéngyou,child; kid,criança; amiguinho,1
+hsk-1-shao-01,character,少,shǎo,few; less,pouco; menos,1
+hsk-1-sui-01,character,岁,suì,years of age,anos (idade),1
+hsk-1-gongzuo-01,word,工作,gōngzuò,work; job,trabalho; trabalhar,1
+hsk-1-nian-01,character,年,nián,year,ano,1
+hsk-1-dian-01,character,店,diàn,shop; store,loja,1
+hsk-1-kai-01,character,开,kāi,to open; to start,abrir; começar,1
+hsk-1-kaiche-01,word,开车,kāichē,to drive,dirigir,1
+hsk-1-didi-01,word,弟弟,dìdi,younger brother,irmão mais novo,1
+hsk-1-hen-01,character,很,hěn,very,muito,1
+hsk-1-mang-01,character,忙,máng,busy,ocupado,1
+hsk-1-zenme-01,word,怎么,zěnme,how?; why?,como?; por quê?,1
+hsk-1-zenmeyang-01,word,怎么样,zěnmeyàng,how about,como está; que tal,1
+hsk-1-nin-01,character,您,nín,you (polite),senhor(a) (formal),1
+hsk-1-xiang-01,character,想,xiǎng,to want; to think,querer; pensar,1
+hsk-1-wo-01,character,我,wǒ,I; me,eu,1
+hsk-1-women-01,word,我们,wǒmen,we,nós,1
+hsk-1-fangjian-01,word,房间,fángjiān,room,quarto; sala,1
+hsk-1-shouji-01,word,手机,shǒujī,cell phone,celular,1
+hsk-1-dadianhua-01,word,打电话,dǎdiànhuà,to call,telefonar,1
+hsk-1-zhao-01,character,找,zhǎo,to look for,procurar,1
+hsk-1-xin-01,character,新,xīn,new,novo,1
+hsk-1-ri-01,character,日,rì,sun; day,sol; dia,1
+hsk-1-zao-01,character,早,zǎo,early,cedo,1
+hsk-1-zaoshang-01,word,早上,zǎoshang,morning,manhã,1
+hsk-1-zaofan-01,word,早饭,zǎofàn,breakfast,café da manhã,1
+hsk-1-shihou-01,word,时候,shíhou,time; moment,momento; hora,1
+hsk-1-shijian-01,word,时间,shíjiān,time,tempo,1
+hsk-1-mingtian-01,word,明天,míngtiān,tomorrow,amanhã,1
+hsk-1-mingnian-01,word,明年,míngnián,next year,ano que vem,1
+hsk-1-xingqi-01,word,星期,xīngqī,week,semana,1
+hsk-1-xingqitian-01,word,星期天,Xīngqītiān,Sunday,domingo,1
+hsk-1-xingqiri-01,word,星期日,Xīngqīrì,Sunday,domingo,1
+hsk-1-zuotian-01,word,昨天,zuótiān,yesterday,ontem,1
+hsk-1-shi-03,character,是,shì,to be,ser; estar,1
+hsk-1-wan-01,character,晚,wǎn,evening; late,tarde; noite,1
+hsk-1-wanshang-01,word,晚上,wǎnshang,evening; night,noite,1
+hsk-1-wanfan-01,word,晚饭,wǎnfàn,dinner,jantar,1
+hsk-1-yue-01,character,月,yuè,month; moon,mês; lua,1
+hsk-1-you-01,character,有,yǒu,to have; there is,ter; haver,1
+hsk-1-youdianr-01,word,有点儿,yǒudiǎnr,slightly,um pouco,1
+hsk-1-youxie-01,word,有些,yǒuxiē,some,alguns; um pouco,1
+hsk-1-youde-01,word,有的,yǒude,some,alguns,1
+hsk-1-pengyou-01,word,朋友,péngyou,friend,amigo,1
+hsk-1-ben-01,character,本,běn,classifier for books,classificador para livros,1
+hsk-1-lai-01,character,来,lái,to come,vir,1
+hsk-1-beizi-01,word,杯子,bēizi,cup,copo; xícara,1
+hsk-1-zhuozi-01,word,桌子,zhuōzi,table; desk,mesa,1
+hsk-1-yizi-01,word,椅子,yǐzi,chair,cadeira,1
+hsk-1-ge-02,character,歌,gē,song,canção,1
+hsk-1-zhengzai-01,word,正在,zhèngzài,in the process of,estar fazendo,1
+hsk-1-shui-01,character,水,shuǐ,water,água,1
+hsk-1-shuiguo-01,word,水果,shuǐguǒ,fruit,fruta,1
+hsk-1-hanzi-01,word,汉字,hànzì,Chinese character,caractere chinês,1
+hsk-1-hanyu-01,word,汉语,Hànyǔ,Chinese language,língua chinesa,1
+hsk-1-meishi-01,word,没事,méishì,it's nothing,não é nada; tudo bem,1
+hsk-1-meiguanxi-01,word,没关系,méiguānxi,it doesn't matter,não tem problema,1
+hsk-1-meiyou-01,word,没有,méiyǒu,doesn't have; there is not,não ter; não haver,1
+hsk-1-piaoliang-01,word,漂亮,piàoliang,pretty,bonito(a),1
+hsk-1-huoche-01,word,火车,huǒchē,train,trem,1
+hsk-1-dian-02,character,点,diǎn,o'clock; a bit,hora; um pouco,1
+hsk-1-re-01,character,热,rè,hot,quente,1
+hsk-1-ai-01,character,爱,ài,to love,amar; gostar,1
+hsk-1-baba-01,word,爸爸,bàba,father,pai,1
+hsk-1-niunai-01,word,牛奶,niúnǎi,milk,leite,1
+hsk-1-gou-01,character,狗,gǒu,dog,cachorro,1
+hsk-1-mao-01,character,猫,māo,cat,gato,1
+hsk-1-wan-02,character,玩,wán,to play,brincar; jogar,1
+hsk-1-xianzai-01,word,现在,xiànzài,now,agora,1
+hsk-1-shengbing-01,word,生病,shēngbìng,to fall ill,ficar doente,1
+hsk-1-dianying-01,word,电影,diànyǐng,movie,filme,1
+hsk-1-dianyingyuan-01,word,电影院,diànyǐngyuàn,cinema,cinema,1
+hsk-1-diannao-01,word,电脑,diànnǎo,computer,computador,1
+hsk-1-dianshi-01,word,电视,diànshì,television,televisão,1
+hsk-1-dianhua-01,word,电话,diànhuà,telephone,telefone,1
+hsk-1-nan-01,character,男,nán,male,homem; masculino,1
+hsk-1-nanpengyou-01,word,男朋友,nánpéngyou,boyfriend,namorado,1
+hsk-1-bing-01,character,病,bìng,illness; to fall ill,doença; doente,1
+hsk-1-baitian-01,word,白天,báitiān,daytime,dia (período),1
+hsk-1-bai-01,character,百,bǎi,hundred,cem,1
+hsk-1-de-01,character,的,de,possessive particle,partícula possessiva,1
+hsk-1-kan-01,character,看,kàn,to see; to watch; to read,ver; assistir; ler,1
+hsk-1-kanbing-01,word,看病,kànbìng,to see a doctor,consultar médico,1
+hsk-1-kanjian-01,word,看见,kànjiàn,to see,ver,1
+hsk-1-zhen-01,character,真,zhēn,really,realmente; verdadeiro,1
+hsk-1-shui-02,character,睡,shuì,to sleep,dormir,1
+hsk-1-shuijiao-01,word,睡觉,shuìjiào,to sleep,dormir,1
+hsk-1-zhidao-01,word,知道,zhīdào,to know,saber,1
+hsk-1-chuan-01,character,穿,chuān,to wear,vestir; usar,1
+hsk-1-di-01,character,第,dì,ordinal prefix,prefixo ordinal,1
+hsk-1-mifan-01,word,米饭,mǐfàn,cooked rice,arroz cozido,1
+hsk-1-gei-01,character,给,gěi,to give; for,dar; para,1
+hsk-1-laoshi-01,word,老师,lǎoshī,teacher,professor,1
+hsk-1-neng-01,character,能,néng,can; be able to,poder; conseguir,1
+hsk-1-pingguo-01,word,苹果,píngguǒ,apple,maçã,1
+hsk-1-cha-01,character,茶,chá,tea,chá,1
+hsk-1-cai-01,character,菜,cài,vegetable; dish,verdura; prato,1
+hsk-1-yifu-01,word,衣服,yīfu,clothes,roupa,1
+hsk-1-yao-01,character,要,yào,to want; will,querer; precisar,1
+hsk-1-jian-02,character,见,jiàn,to meet; to see,encontrar; ver,1
+hsk-1-juede-01,word,觉得,juéde,to feel; to think,achar; sentir,1
+hsk-1-renshi-01,word,认识,rènshi,to know; to recognize,conhecer; reconhecer,1
+hsk-1-shuo-01,character,说,shuō,to speak; to say,falar; dizer,1
+hsk-1-shuohua-01,word,说话,shuōhuà,to speak; to talk,falar; conversar,1
+hsk-1-qing-01,character,请,qǐng,please; to invite,por favor; convidar,1
+hsk-1-qingwen-01,word,请问,qǐngwèn,excuse me,com licença; posso perguntar,1
+hsk-1-du-01,character,读,dú,to read; to study,ler; estudar,1
+hsk-1-dushu-01,word,读书,dúshū,to read; to study,ler; estudar,1
+hsk-1-ke-01,character,课,kè,class; lesson,aula; lição,1
+hsk-1-shui-03,character,谁,shuí,who,quem,1
+hsk-1-xiexie-01,word,谢谢,xièxie,thank you,obrigado,1
+hsk-1-gui-01,character,贵,guì,expensive,caro,1
+hsk-1-qichuang-01,word,起床,qǐchuáng,to get up,levantar da cama,1
+hsk-1-chaoshi-01,word,超市,chāoshì,supermarket,supermercado,1
+hsk-1-che-01,character,车,chē,car; vehicle,carro; veículo,1
+hsk-1-bian-01,character,边,biān,side; edge,lado; borda,1
+hsk-1-hai-01,character,还,hái,still; also,ainda; também,1
+hsk-1-zhe-01,character,这,zhè,this,este; esta,1
+hsk-1-zhege-01,word,这个,zhège,this one,este; isto,1
+hsk-1-zhexie-01,word,这些,zhèxiē,these,estes; estas,1
+hsk-1-zher-01,word,这儿,zhèr,here,aqui,1
+hsk-1-zhebian-01,word,这边,zhèbiān,this side,deste lado; aqui,1
+hsk-1-zheli-01,word,这里,zhèlǐ,here,aqui,1
+hsk-1-na-02,character,那,nà,that,aquele; aquela,1
+hsk-1-nage-02,word,那个,nàge,that one,aquele; aquilo,1
+hsk-1-naxie-02,word,那些,nàxiē,those,aqueles; aquelas,1
+hsk-1-nar-02,word,那儿,nàr,there,lá,1
+hsk-1-nabian-01,word,那边,nàbiān,over there,lá; do outro lado,1
+hsk-1-nali-02,word,那里,nàli,there,lá,1
+hsk-1-dou-01,character,都,dōu,all; both,todos; ambos,1
+hsk-1-li-01,character,里,lǐ,inside,dentro,1
+hsk-1-qian-03,character,钱,qián,money,dinheiro,1
+hsk-1-wen-01,character,问,wèn,to ask,perguntar,1
+hsk-1-wenti-01,word,问题,wèntí,question; problem,pergunta; problema,1
+hsk-1-yu-01,character,雨,yǔ,rain,chuva,1
+hsk-1-xue-02,character,雪,xuě,snow,neve,1
+hsk-1-ling-01,character,零,líng,zero,zero,1
+hsk-1-feichang-01,word,非常,fēicháng,very,muito; extremamente,1
+hsk-1-mianbao-01,word,面包,miànbāo,bread,pão,1
+hsk-1-miantiaor-01,word,面条儿,miàntiáor,noodles,macarrão; noodles,1
+hsk-1-feiji-01,word,飞机,fēijī,airplane,avião,1
+hsk-1-fan-01,character,饭,fàn,meal; rice,refeição; arroz,1
+hsk-1-fandian-01,word,饭店,fàndiàn,restaurant; hotel,restaurante; hotel,1
+hsk-1-jiaozi-01,word,饺子,jiǎozi,dumpling,dumpling; pastel chinês,1
+hsk-1-gaoxing-01,word,高兴,gāoxìng,happy,feliz; contente,1
+hsk-1-jidan-01,word,鸡蛋,jīdàn,egg,ovo,1

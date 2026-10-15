@@ -1,9 +1,21 @@
 {
-  "$schema": "node_modules/wrangler/config-schema.json",
-  "name": "orbe",
-  "main": "worker/index.ts",
-  "compatibility_date": "2026-10-14",
-  "assets": {
-    "not_found_handling": "single-page-application"
-  }
+	"$schema": "node_modules/wrangler/config-schema.json",
+	"name": "orbe",
+	"workers_dev": true,
+	"vars": {
+		"ADMIN_EMAIL": "wycmiranda@gmail.com"
+	},
+	"main": "worker/index.ts",
+	"compatibility_date": "2026-10-14",
+	"assets": {
+		"binding": "ASSETS",
+		"not_found_handling": "single-page-application"
+	},
+	"d1_databases": [
+		{
+			"binding": "DB",
+			"database_name": "orbe",
+			"database_id": "fedd790c-fe3b-44ef-8d37-50ff086d2fef"
+		}
+	]
 }
