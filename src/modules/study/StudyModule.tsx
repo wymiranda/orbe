@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import '../../App.css'
-import { newCardsIntroducedToday, nextReview, recordCardPresentation, recordStudyActivity, setCardLearned, setVocabularyLearned, type DeviceCard, type DeviceProgress, type Rating } from './engine/progress-store'
+import { newCardsIntroducedToday, nextReview, recordCardPresentation, recordStudyActivity, setCardLearned, setVocabularyLearned, unsetVocabularyLearned, type DeviceCard, type DeviceProgress, type Rating } from './engine/progress-store'
 import { completeDeckStep, dailyNewCardLimit, dropDeckCard, extraDeckSession, nextDeckStep, planDeckSession, type DeckSession } from './engine/deck-session'
 import type { FlashcardDashboardContext, FlashcardFace, FlashcardSource } from './flashcard-source'
 import { declareModuleKnowledge, recordModuleActivity } from '../../learning-paths/module-bridge'
@@ -200,14 +200,15 @@ function StudyModule<T extends Item>({ source, vocabulary: givenVocabulary, offe
     }
     setSession({ ...session, phase: 'review-new', ready: false, answerVisible: false, pendingIds: session.batchIds, introducedCardIds })
   }
+  /** Marks the card as learned, or, pressed again, takes the mark back. */
   function markCardAsLearned() {
     if (!sessionCard) return
     const nextProgress = store.load()
     const wasLearned = nextProgress.vocabulary[sessionCard.vocabularyId] === 'learned'
-    setVocabularyLearned(nextProgress, sessionCard.vocabularyId)
-    if (!wasLearned) recordStudyActivity(nextProgress, { learned: 1 })
+    if (wasLearned) unsetVocabularyLearned(nextProgress, sessionCard.vocabularyId)
+    else { setVocabularyLearned(nextProgress, sessionCard.vocabularyId); recordStudyActivity(nextProgress, { learned: 1 }) }
     setCardLearned(nextProgress, sessionCard.vocabularyId)
-    void declareModuleKnowledge(sessionCard.vocabularyId, 'known')
+    void declareModuleKnowledge(sessionCard.vocabularyId, wasLearned ? 'unknown' : 'known')
     saveAndSync(nextProgress)
   }
   function removeCurrentCard() {

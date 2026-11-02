@@ -12,6 +12,7 @@ import type { QuizQuestion, QuizSource } from "../../modules/quiz/QuizModule";
 import { createCardsForVocabulary, loadDeviceProgress, rateCard } from "./device-progress";
 import { startStudySync } from "./study-sync";
 import { chineseFlashcardSource } from "./flashcard-source";
+import { SaveSentenceButton, sentenceFlashcardSource } from "./saved-sentences";
 import { chineseQuizSource } from "./quiz-source";
 import { KnowledgeRepository } from "../../learning-paths/repository";
 import type { ActivityRequest, ActivityResult, KnowledgeSnapshot } from "../../learning-paths/types";
@@ -83,6 +84,10 @@ function trailQuizSource(activity: ActivityRequest, onComplete?: () => void | Pr
   };
 }
 
+
+/** The bookmark of the sentence games: saves the sentence for Flashcards → Estudar frases. */
+const saveSentenceAction = (sentence: { id: string }) => <SaveSentenceButton sentenceId={sentence.id} />;
+const saveRoundAction = (roundId: string) => <SaveSentenceButton sentenceId={roundId} />;
 
 /** A sentence heard in "Ouça e monte" this recently goes to the end of the next session's queue. */
 const playedLatelyMs = 2 * 86_400_000;
@@ -309,7 +314,7 @@ function ChineseWorkspace({ onChooseWorkspace = () => {}, onLogout = () => {} }:
       return;
     }
     if (game === "listening") {
-      setSessionListeningSource(createChineseListeningSource({ strict: true, maxLevel: sessionLevel, maxDifficulty: user?.study_difficulty, studiedWord: studiedWord(knowledge, pendingStudyResult.current), focusWords: sessionFocusWords(), playedLately: (sentence) => (knowledge?.contents[sentence.contentIds[0]]?.updatedAt ?? 0) > Date.now() - playedLatelyMs, brutalBoost: Boolean(user?.brutal_boost), onBrutalCorrect: recordBrutalCorrect }));
+      setSessionListeningSource(createChineseListeningSource({ strict: true, maxLevel: sessionLevel, maxDifficulty: user?.study_difficulty, studiedWord: studiedWord(knowledge, pendingStudyResult.current), focusWords: sessionFocusWords(), playedLately: (sentence) => (knowledge?.contents[sentence.contentIds[0]]?.updatedAt ?? 0) > Date.now() - playedLatelyMs, brutalBoost: Boolean(user?.brutal_boost), sentenceAction: saveSentenceAction, onBrutalCorrect: recordBrutalCorrect }));
       setSection("listen-build");
       return;
     }
@@ -671,13 +676,17 @@ function ChineseWorkspace({ onChooseWorkspace = () => {}, onLogout = () => {} }:
   const brutalLevelsKey = (user?.brutal_levels ?? []).join();
   const brutalLevels = useMemo(() => brutalLevelsKey ? brutalLevelsKey.split(",") : [], [brutalLevelsKey]);
   // The catalogue opens on the learner's level and difficulty; both can be changed before playing.
-  const flashcardSource = useMemo(() => chineseFlashcardSource(user?.self_assessed_hsk_level ?? "1"), [user?.self_assessed_hsk_level]);
+  // The Flashcards tab studies words or the sentences saved from the games; each deck links to the other.
+  const [flashcardDeck, setFlashcardDeck] = useState<"words" | "sentences">("words");
+  const deckSwitch = (deck: "words" | "sentences", label: string) => () => <div className="flashcard-deck-switch"><button type="button" className="secondary" onClick={() => setFlashcardDeck(deck)}>{label}</button></div>;
+  const flashcardSource = useMemo(() => chineseFlashcardSource(user?.self_assessed_hsk_level ?? "1", deckSwitch("sentences", "Estudar frases")), [user?.self_assessed_hsk_level]);
+  const sentenceDeckSource = useMemo(() => sentenceFlashcardSource(deckSwitch("words", "Estudar palavras")), []);
   // The catalogue games play only words the learner has learned too; read through a ref so a new
   // result does not rebuild the game being played.
   const learnedWord = useRef<(hanzi: string) => boolean>(() => false);
   useEffect(() => { learnedWord.current = studiedWord(knowledge, null); }, [knowledge]);
   const catalogPictureSource = useMemo(() => createChinesePictureSource({ studiedWord: (hanzi) => learnedWord.current(hanzi) }), []);
-  const catalogListeningSource = useMemo(() => createChineseListeningSource({ maxLevel: listeningMaxLevel, studiedWord: (hanzi) => learnedWord.current(hanzi), choosable: { level: String(listeningMaxLevel), difficulty: user?.study_difficulty ?? "easy", brutalLevels }, brutalBoost: Boolean(user?.brutal_boost), onBrutalCorrect: recordBrutalCorrect }), [listeningMaxLevel, user?.study_difficulty, brutalLevels, user?.brutal_boost]);
+  const catalogListeningSource = useMemo(() => createChineseListeningSource({ maxLevel: listeningMaxLevel, studiedWord: (hanzi) => learnedWord.current(hanzi), choosable: { level: String(listeningMaxLevel), difficulty: user?.study_difficulty ?? "easy", brutalLevels }, brutalBoost: Boolean(user?.brutal_boost), sentenceAction: saveSentenceAction, onBrutalCorrect: recordBrutalCorrect }), [listeningMaxLevel, user?.study_difficulty, brutalLevels, user?.brutal_boost]);
   const catalogSpeakingSource = useMemo(() => createChineseSpeakingSource({ studiedWord: (hanzi) => learnedWord.current(hanzi), initial: { level: String(listeningMaxLevel), difficulty: user?.study_difficulty ?? "easy", brutalLevels } }), [listeningMaxLevel, user?.study_difficulty, brutalLevels]);
   let content: React.ReactNode;
   if (sessionSummary && overview)
@@ -690,7 +699,9 @@ function ChineseWorkspace({ onChooseWorkspace = () => {}, onLogout = () => {} }:
     content = <WritingModule key={weakReview.activity.id} items={weakReview.writingItems} embedded guidedOnly onComplete={finishWeakWriting} onExit={returnToTrailOrchestrator} />;
   else if (section === "flashcards") content = trailActivity?.anchor && !trailIntroductionSeen
     ? <TrailSentenceAnchor anchor={trailActivity.anchor} onStart={() => setTrailIntroductionSeen(true)} />
-    : <StudyModule source={flashcardSource} embedded activity={trailActivity} activityStage={trailStudyStage} skipActivityIntroduction onComplete={completeTrailActivity} onExit={returnToTrailOrchestrator} />;
+    : !trailActivity && flashcardDeck === "sentences"
+      ? <StudyModule key="sentences" source={sentenceDeckSource} embedded />
+      : <StudyModule source={flashcardSource} embedded activity={trailActivity} activityStage={trailStudyStage} skipActivityIntroduction onComplete={completeTrailActivity} onExit={returnToTrailOrchestrator} />;
   else if (section === "writing") content = sessionWritingItems
     ? <WritingModule items={sessionWritingItems} embedded guidedOnly onComplete={beginTrailReview} onExit={returnToTrailOrchestrator} />
     : <ChineseWriting />;
@@ -708,7 +719,7 @@ function ChineseWorkspace({ onChooseWorkspace = () => {}, onLogout = () => {} }:
     content = <ListenBuildModule source={catalogListeningSource} embedded activity={trailActivity?.moduleId === "listen-build" ? trailActivity : null} onComplete={completeTrailActivity} onExit={returnToTrailOrchestrator} />;
   else if (section === "multiplayer")
     content = sessionSentenceRoundIds
-      ? <MultiplayerPresence onAcceptInvite={(code) => setGameRoom(code)}><MultiplayerModule vocabulary={sentenceGameVocabulary} key={sessionSentenceRoundIds.join(":")} sessionRoundIds={sessionSentenceRoundIds} sessionDifficulty={user?.study_difficulty} sessionLevel={String(sessionLevel)} sessionKnownWords={sessionKnownWords} embeddedSession onSessionComplete={() => finishAfterSessionGame()} userId={user?.id ?? ""} isAdmin={user?.role === "admin"} /></MultiplayerPresence>
+      ? <MultiplayerPresence onAcceptInvite={(code) => setGameRoom(code)}><MultiplayerModule vocabulary={sentenceGameVocabulary} key={sessionSentenceRoundIds.join(":")} sessionRoundIds={sessionSentenceRoundIds} sessionDifficulty={user?.study_difficulty} sessionLevel={String(sessionLevel)} sessionKnownWords={sessionKnownWords} sentenceAction={saveRoundAction} embeddedSession onSessionComplete={() => finishAfterSessionGame()} userId={user?.id ?? ""} isAdmin={user?.role === "admin"} /></MultiplayerPresence>
       : activeGame === "scene-certa"
       ? <SceneCertaModule source={catalogPictureSource} embedded onExit={() => setActiveGame(null)} />
       : activeGame === "listen-build"
@@ -716,7 +727,7 @@ function ChineseWorkspace({ onChooseWorkspace = () => {}, onLogout = () => {} }:
       : activeGame === "speak-aloud"
       ? <SpeakAloudModule source={catalogSpeakingSource} embedded onExit={() => setActiveGame(null)} />
       : activeGame === "multiplayer"
-        ? <MultiplayerPresence onAcceptInvite={(code) => setGameRoom(code)}><MultiplayerModule vocabulary={sentenceGameVocabulary} key={gameRoom} initialRoomCode={gameRoom} startSentenceSetup userId={user?.id ?? ""} isAdmin={user?.role === "admin"} /></MultiplayerPresence>
+        ? <MultiplayerPresence onAcceptInvite={(code) => setGameRoom(code)}><MultiplayerModule vocabulary={sentenceGameVocabulary} key={gameRoom} initialRoomCode={gameRoom} sentenceAction={saveRoundAction} startSentenceSetup userId={user?.id ?? ""} isAdmin={user?.role === "admin"} /></MultiplayerPresence>
         : <GamesHome isAdmin={user?.role === "admin"} onOpenSceneCerta={() => setActiveGame("scene-certa")} onOpenListening={() => setActiveGame("listen-build")} onOpenMultiplayer={() => setActiveGame("multiplayer")} onOpenSpeaking={() => setActiveGame("speak-aloud")} />;
   else if (section === "admin") content = <ChineseAdmin embedded />;
   else if (section === "profile")

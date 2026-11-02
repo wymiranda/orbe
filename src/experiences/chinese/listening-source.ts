@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react'
 import type { ListeningSentence, ListeningSource } from '../../modules/listen-build/ListenBuildModule'
 import { chineseVoiceStatus, speakChinese } from './speech'
 import { choosableDifficulties, sessionHskLevels, studyDifficultyLabels, withinDifficulty, type StudyDifficulty } from './study-difficulty'
@@ -58,7 +59,7 @@ export function preferStudiedSentences(sentences: ListeningSentence[], studied: 
  * - `brutalBoost`: surprise Brutal rounds are more frequent on Difícil (see brutalSurpriseChances).
  * - `onBrutalCorrect` receives the ID of each surprise Brutal sentence answered correctly.
  */
-export function createChineseListeningSource({ maxLevel = 2, maxDifficulty, studiedWord, strict = false, choosable, focusWords = [], playedLately = () => false, brutalBoost = false, onBrutalCorrect }: { maxLevel?: number; maxDifficulty?: StudyDifficulty; studiedWord?: (hanzi: string) => boolean; strict?: boolean; focusWords?: string[]; playedLately?: (sentence: ListeningSentence) => boolean; brutalBoost?: boolean; choosable?: { level: string; difficulty: StudyDifficulty; brutalLevels: string[] }; onBrutalCorrect?: (sentenceId: string) => void } = {}): ListeningSource {
+export function createChineseListeningSource({ maxLevel = 2, maxDifficulty, studiedWord, strict = false, choosable, focusWords = [], playedLately = () => false, brutalBoost = false, sentenceAction, onBrutalCorrect }: { maxLevel?: number; maxDifficulty?: StudyDifficulty; studiedWord?: (hanzi: string) => boolean; strict?: boolean; focusWords?: string[]; playedLately?: (sentence: ListeningSentence) => boolean; brutalBoost?: boolean; sentenceAction?: (sentence: ListeningSentence) => ReactNode; choosable?: { level: string; difficulty: StudyDifficulty; brutalLevels: string[] }; onBrutalCorrect?: (sentenceId: string) => void } = {}): ListeningSource {
   return {
     language: 'zh-Hans',
     label: 'Mandarim',
@@ -103,6 +104,7 @@ export function createChineseListeningSource({ maxLevel = 2, maxDifficulty, stud
       return playing === 'hard' && brutalBoost ? boostedBrutalSurpriseChance : brutalSurpriseChances[playing] ?? 0
     },
     onBrutalCorrect: (sentence) => onBrutalCorrect?.(sentence.id),
+    sentenceAction,
     voiceStatus: () => chineseVoiceStatus(),
     speak: (text) => { speakChinese(text) },
   }

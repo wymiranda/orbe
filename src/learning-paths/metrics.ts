@@ -17,6 +17,16 @@ export function skillMetric(snapshot: KnowledgeSnapshot, skill: LearningSkill): 
   return Object.fromEntries(modalities.map((modality) => [modality, totals[modality].attempts ? Math.round(totals[modality].weighted / totals[modality].attempts) : 0])) as SkillMetric
 }
 
+/** One strength per modality across every skill, weighted by the evidence (attempts) behind it; zero without evidence. */
+export function modalityMetric(snapshot: KnowledgeSnapshot): SkillMetric {
+  const totals = Object.fromEntries(modalities.map((modality) => [modality, { weighted: 0, attempts: 0 }])) as Record<LearningModality, { weighted: number; attempts: number }>
+  for (const content of Object.values(snapshot.contents)) for (const skill of Object.values(content.skills)) for (const modality of modalities) {
+    const value = skill?.modalities?.[modality]
+    if (value) { totals[modality].weighted += value.strength * value.attempts; totals[modality].attempts += value.attempts }
+  }
+  return Object.fromEntries(modalities.map((modality) => [modality, totals[modality].attempts ? Math.round(totals[modality].weighted / totals[modality].attempts) : 0])) as SkillMetric
+}
+
 export function evidenceConfidence(snapshot: KnowledgeSnapshot): SkillMetric {
   const totals = Object.fromEntries(modalities.map((modality) => [modality, 0])) as Record<LearningModality, number>
   for (const content of Object.values(snapshot.contents)) for (const skill of Object.values(content.skills)) for (const modality of modalities) totals[modality] += skill?.modalities?.[modality]?.attempts ?? 0

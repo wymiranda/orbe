@@ -1,4 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { modalityMetric } from "../../../learning-paths/metrics";
 import { KnowledgeRepository } from "../../../learning-paths/repository";
 import type { KnowledgeSnapshot } from "../../../learning-paths/types";
 import { loadDeviceProgress } from "../device-progress";
@@ -28,16 +29,53 @@ function wallPages<T>(terms: T[]): T[][] {
   return Array.from({ length: count }, (_, page) => terms.slice(page * size, (page + 1) * size));
 }
 
+/** Time for each bar to fill, and between two bars, in milliseconds. */
+const barFillDuration = 1200;
+const barStagger = 180;
+
+/** The learner's strength in reading, writing, speaking and listening: the bars fill up to it, the numbers count up. */
+function ModalityProgress() {
+  const [knowledge, setKnowledge] = useState<KnowledgeSnapshot | null>(null);
+  const [shown, setShown] = useState(0);
+  useEffect(() => { void new KnowledgeRepository().load().then(setKnowledge); }, []);
+  const metric = knowledge ? modalityMetric(knowledge) : null;
+  const rows = metric ? [{ label: "Ler", value: metric.reading }, { label: "Escrever", value: metric.writing }, { label: "Falar", value: metric.speaking }, { label: "Ouvir", value: metric.listening }] : [];
+  // One clock for the whole board: each bar starts a little after the previous one.
+  useEffect(() => {
+    if (!metric) return;
+    const total = barFillDuration + barStagger * 3;
+    if (prefersReducedMotion()) { setShown(total); return; }
+    let frame = 0;
+    const start = performance.now();
+    const tick = (time: number) => { const elapsed = Math.min(total, time - start); setShown(elapsed); if (elapsed < total) frame = requestAnimationFrame(tick); };
+    frame = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(frame);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [Boolean(metric)]);
+  const progressOf = (index: number) => { const t = Math.max(0, Math.min(1, (shown - index * barStagger) / barFillDuration)); return 1 - (1 - t) ** 3; };
+  return <section className="session-modality-progress" aria-label="Seu progresso">
+    <h1>Seu progresso</h1>
+    <ul>{rows.map((row, index) => { const current = Math.round(row.value * progressOf(index)); return <li key={row.label}>
+      <span>{row.label}</span>
+      <div className="session-modality-track" role="meter" aria-valuemin={0} aria-valuemax={100} aria-valuenow={row.value} aria-label={row.label}><i style={{ width: `${row.value * progressOf(index)}%` }} /></div>
+      <strong>{current}%</strong>
+    </li>; })}</ul>
+  </section>;
+}
+
 function prefersReducedMotion() {
   return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 }
 
-/** End of a daily session: its words (new, or reviewed once the trail is finished) fly to the wall of the learner's level. */
+/**
+ * End of a daily session: new words fly to the wall of the learner's level. A session that taught
+ * no new word (review, focus or practice) shows instead the progress in each modality.
+ */
 export function SessionSummary({ newWords, reviewed = false, level, vocabulary, onDone }: { newWords: WallWord[]; reviewed?: boolean; level: string; vocabulary: WallWord[]; onDone: () => void }) {
+  const learned = newWords.length > 0 && !reviewed;
   return <main className="workspace-view session-summary">
     <section className="session-summary-content">
-      {newWords.length > 0 && !reviewed && <h1>Palavras novas</h1>}
-      <NewWordsWall newWords={newWords} level={level} vocabulary={vocabulary} />
+      {learned ? <><h1>Palavras novas</h1><NewWordsWall newWords={newWords} level={level} vocabulary={vocabulary} /></> : <ModalityProgress />}
       <button type="button" onClick={onDone}>Concluir</button>
     </section>
   </main>;

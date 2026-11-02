@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { Play } from 'lucide-react'
 import '../../App.css'
 import { recordModuleActivity } from '../../learning-paths/module-bridge'
@@ -42,6 +42,8 @@ export type ListeningSource = {
   loadBrutalSentences?: () => Promise<ListeningSentence[]>
   /** Chance (0–1) of a Brutal round in a game with the given setup choices. */
   brutalSurpriseChance?: (selection: Record<string, string>) => number
+  /** Shown in a corner of each round, given its sentence (e.g. a bookmark to study it later). */
+  sentenceAction?: (sentence: ListeningSentence) => ReactNode
   /** A Brutal round was answered correctly (it counts towards unlocking Brutal). */
   onBrutalCorrect?: (sentence: ListeningSentence) => void
   voiceStatus: () => Promise<ListeningVoiceStatus>
@@ -198,6 +200,7 @@ function ListenBuildModule({ source, embedded = false, activity, sessionMode = f
           <span>{correct ? 'Correto.' : `Era: ${current.sentence.text}`}</span>
           <button type="button" onClick={next}>{index + 1 === rounds.length ? (sessionMode ? 'Continuar' : 'Ver resultado') : 'Próxima'}</button>
         </div>}
+        {source.sentenceAction && <div className="sentence-corner">{source.sentenceAction(current.sentence)}</div>}
       </section>
     </main>
   }

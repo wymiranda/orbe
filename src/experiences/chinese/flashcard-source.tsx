@@ -14,7 +14,7 @@ function speakChinese(text: string) {
 }
 
 /** Chinese words on the shared flashcard engine; `wallLevel` is the HSK wall the new cards fly to at the end of a deck study. */
-export function chineseFlashcardSource(wallLevel?: string): FlashcardSource<OfflineVocabulary> {
+export function chineseFlashcardSource(wallLevel?: string, dashboardTop?: FlashcardSource<OfflineVocabulary>['dashboardTop']): FlashcardSource<OfflineVocabulary> {
   return {
     language: 'zh-Hans',
     store: chineseProgressStore,
@@ -29,6 +29,7 @@ export function chineseFlashcardSource(wallLevel?: string): FlashcardSource<Offl
     vocabularyEvent: chineseVocabularyEvent,
     face: (item) => ({ front: item.hanzi, reading: item.pinyin, meaning: item.portuguese, detail: `${item.english} · HSK ${item.hsk_level}`, speech: item.hanzi, explanation: wordExplanations[item.hanzi] ?? null, visual: item.visual_kind && item.visual_value ? { kind: item.visual_kind, value: item.visual_value } : null }),
     speak: speakChinese,
+    dashboardTop,
     dashboardBottom: (context) => <><HskBulkAdd {...context} /><StudyOptions {...context} /></>,
     sessionComplete: wallLevel ? (introduced, vocabulary) => <NewWordsWall newWords={introduced} level={wallLevel} vocabulary={vocabulary} /> : undefined,
   }

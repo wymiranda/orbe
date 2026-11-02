@@ -77,7 +77,7 @@ export default {
     const studyResponse = await handleStudyRequest(request, env, authenticatedUser)
     if (studyResponse) return studyResponse
 
-    const chineseResponse = await handleChineseRequest(request, env)
+    const chineseResponse = await handleChineseRequest(request, env, authenticatedUser)
     if (chineseResponse) return chineseResponse
 
     const englishResponse = await handleEnglishRequest(request, env, authenticatedUser)

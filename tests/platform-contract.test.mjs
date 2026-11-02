@@ -546,6 +546,33 @@ test('after the starter core, new words come at a pace that follows the learner'
   assert.equal(plan.fragileWord(snapshot, '茶'), false)
 })
 
+test('sentences saved from the games are kept per learner and studied as their own deck', async () => {
+  const migration = await source('migrations/0013_create_saved_sentences.sql')
+  assert.match(migration, /CREATE TABLE user_saved_sentences/)
+  assert.match(migration, /PRIMARY KEY \(user_id, sentence_id\)/)
+  assert.doesNotMatch(migration, /DROP|ALTER TABLE/)
+  const handler = await source('worker/modules/chinese/handler.ts')
+  // Only catalogue sentences can be saved, and only by the learner who is signed in.
+  assert.match(handler, /SELECT 1 FROM chinese_sentences WHERE id = \?/)
+  assert.match(handler, /user_saved_sentences WHERE user_id = \?/)
+  const saved = await source('src/experiences/chinese/saved-sentences.tsx')
+  assert.match(saved, /storageKey: 'niorb:chinese-sentence-progress:v1'/)
+  const workspace = await source('src/experiences/chinese/ChineseWorkspace.tsx')
+  assert.match(workspace, /sentenceAction=\{saveRoundAction\}/)
+  assert.match(workspace, /sentenceAction: saveSentenceAction/)
+})
+
+test('progress per modality weighs every skill by its evidence', async () => {
+  const { modalityMetric } = await importTs('src/learning-paths/metrics.ts')
+  const skill = (modalities) => ({ attempts: 1, successes: 1, hints: 0, strength: 0, dueAt: 0, updatedAt: 0, modalities })
+  const evidence = (attempts, strength) => ({ attempts, successes: attempts, strength, updatedAt: 0 })
+  const snapshot = { version: 1, updatedAt: 0, contents: {
+    '茶': { skills: { recognition: skill({ reading: evidence(3, 90) }), production: skill({ writing: evidence(1, 40) }) }, mastered: false, updatedAt: 1 },
+    '水': { skills: { recognition: skill({ reading: evidence(1, 50) }) }, mastered: false, updatedAt: 1 },
+  } }
+  assert.deepEqual(modalityMetric(snapshot), { reading: 80, writing: 40, speaking: 0, listening: 0 })
+})
+
 test('grammar words come with an explanation and examples on their card', async () => {
   const { wordExplanations } = await importTs('src/experiences/chinese/word-explanations.ts')
   const hsk1 = new Set((await source('files/vocabulario hsk/hsk1.txt')).split(/\r?\n/).slice(1).map((line) => line.split(',')[0]).filter(Boolean))

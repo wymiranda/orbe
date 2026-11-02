@@ -81,8 +81,28 @@ function hskMockFromSyntax(value: unknown): HskMockQuestion | null {
   return { id: typeof input.id === 'string' && input.id.trim() ? input.id : crypto.randomUUID(), hsk_level: level, section, part, format, definition_json: JSON.stringify(definition), status: input.status === 'inactive' ? 'inactive' : 'active', position: typeof input.position === 'number' && Number.isInteger(input.position) ? input.position : 0, created_at: now, updated_at: now }
 }
 
-export async function handleChineseRequest(request: Request, env: ChineseEnv): Promise<Response | null> {
+export async function handleChineseRequest(request: Request, env: ChineseEnv, user?: { id: string } | null): Promise<Response | null> {
   const url = new URL(request.url)
+
+  // Sentences the learner saved from the games, studied as flashcards.
+  if (url.pathname === '/api/chinese/saved-sentences' && request.method === 'GET') {
+    if (!user) return Response.json({ error: 'Faça login para continuar.' }, { status: 401 })
+    const { results } = await env.DB.prepare('SELECT sentence_id FROM user_saved_sentences WHERE user_id = ? ORDER BY saved_at').bind(user.id).all<{ sentence_id: string }>()
+    return Response.json({ ids: results.map((row) => row.sentence_id) }, { headers: { 'cache-control': 'no-store' } })
+  }
+  const savedSentence = /^\/api\/chinese\/saved-sentences\/([^/]{1,120})$/.exec(url.pathname)
+  if (savedSentence && (request.method === 'PUT' || request.method === 'DELETE')) {
+    if (!user) return Response.json({ error: 'Faça login para continuar.' }, { status: 401 })
+    const sentenceId = decodeURIComponent(savedSentence[1])
+    if (request.method === 'DELETE') {
+      await env.DB.prepare('DELETE FROM user_saved_sentences WHERE user_id = ? AND sentence_id = ?').bind(user.id, sentenceId).run()
+      return new Response(null, { status: 204 })
+    }
+    const exists = await env.CHINESE_DB.prepare('SELECT 1 FROM chinese_sentences WHERE id = ?').bind(sentenceId).first()
+    if (!exists) return Response.json({ error: 'Frase não encontrada.' }, { status: 404 })
+    await env.DB.prepare('INSERT OR IGNORE INTO user_saved_sentences (user_id, sentence_id, saved_at) VALUES (?, ?, ?)').bind(user.id, sentenceId, new Date().toISOString()).run()
+    return new Response(null, { status: 204 })
+  }
 
   if (url.pathname === '/api/chinese/hsk-mock-questions' && request.method === 'GET') {
     const level = url.searchParams.get('level')

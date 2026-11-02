@@ -533,7 +533,15 @@ code { background: var(--surface-2); border-radius: 0.25rem; color: var(--ink); 
 .writing-next { font-size: 1.35rem; line-height: 1; min-width: 2.45rem; padding: .35rem .45rem; }
 .writing-session-content { margin: 0 auto; max-width: 42rem; padding: clamp(.75rem, 2.5vh, 1.75rem) 1rem; }
 /* The session card is fixed at the bottom: the writing actions must be reachable above it. */
-.workspace-layout:has(.session-orchestration-progress) .writing-session-content { padding-bottom: 7.5rem; }
+.workspace-layout:has(.session-orchestration-progress) .writing-session-content, .workspace-layout:has(.session-orchestration-progress) .study-session-content, .workspace-layout:has(.session-orchestration-progress) .scene-certa-content { padding-bottom: 7.5rem; }
+/* A bookmark in a corner of the sentence games: there, not in the way. */
+.sentence-corner { display: flex; justify-content: flex-end; margin-top: 1.25rem; }
+.save-sentence { align-items: center; background: transparent; border: 1px solid transparent; border-radius: 99rem; color: var(--muted); cursor: pointer; display: inline-flex; height: 2.25rem; justify-content: center; opacity: .7; padding: 0; width: 2.25rem; }
+.save-sentence:hover, .save-sentence:focus-visible { border-color: var(--line); opacity: 1; }
+.save-sentence.saved { color: var(--accent); opacity: 1; }
+/* A sentence on a flashcard is longer than a word: a smaller front. */
+.focus-hanzi.focus-sentence { font-size: clamp(1.8rem, 7vw, 2.8rem); line-height: 1.3; }
+.flashcard-deck-switch { display: flex; justify-content: flex-end; }
 .writing-session-content .session-counter { color: var(--ink-2); font-size: .82rem; margin: 0 0 .55rem; text-align: center; }
 .writing-session .writing-canvas { width: min(100%, 26rem, calc(100svh - 20rem)); }
 .writing-session .guided-writer { min-height: 0; height: min(26rem, calc(100svh - 20rem)); }
