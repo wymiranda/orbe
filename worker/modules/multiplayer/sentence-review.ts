@@ -5,11 +5,14 @@ export type SentenceReviewOutcome = { review: SentenceReview | null; unavailable
 type ReviewResponse = { response?: unknown; choices?: { message?: { content?: unknown } }[] }
 type CompactReview = { result_flags: number; payload: ArrayBuffer }
 type ReviewPayload = { t: string | null; r: string; s: string | null }
-const rubricVersion = 1
+// 2: the mission reaches the model without "Monte:" and with the curated answer; verdicts of 1 were often wrong.
+const rubricVersion = 2
 const brotliOptions = { params: { [constants.BROTLI_PARAM_QUALITY]: 5 } }
 
-async function contextHash(mission?: string) {
-  const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(mission ?? 'free'))
+export type SentenceMission = { meaning: string; reference: string }
+
+async function contextHash(mission?: SentenceMission) {
+  const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(mission ? `${mission.meaning}\n${mission.reference}` : 'free'))
   return new Uint8Array(digest).slice(0, 16)
 }
 function reviewFlags(review: SentenceReview) { return (review.grammatical ? 1 : 0) | (review.natural ? 2 : 0) | (review.coherent ? 4 : 0) | (review.meetsMission === true ? 8 : 0) | (review.meetsMission !== null ? 16 : 0) }
@@ -35,7 +38,7 @@ function parseReview(value: unknown): SentenceReview | null {
   return null
 }
 
-export async function reviewChineseSentence(ai: Ai, db: D1Database, sentence: string, mission?: string): Promise<SentenceReviewOutcome> {
+export async function reviewChineseSentence(ai: Ai, db: D1Database, sentence: string, mission?: SentenceMission): Promise<SentenceReviewOutcome> {
   const context = await contextHash(mission)
   try {
     const compact = await db.prepare('SELECT result_flags, payload FROM multiplayer_sentence_review_cache WHERE sentence = ? AND context_hash = ? AND rubric_version = ?').bind(sentence, context, rubricVersion).first<CompactReview>()
@@ -44,15 +47,17 @@ export async function reviewChineseSentence(ai: Ai, db: D1Database, sentence: st
   try {
     const response = await ai.run('@cf/qwen/qwen3-30b-a3b-fp8', {
       messages: [
-        { role: 'system', content: 'Avalie uma frase em mandarim. Responda somente JSON: {"grammatical":boolean,"natural":boolean,"coherent":boolean,"meets_mission":boolean|null,"translation_pt":string|null,"reason_pt":string,"suggestion":string|null}. Verifique gramática, naturalidade e coerência semântica. Se houver objetivo, verifique também se a frase o cumpre; sem objetivo, meets_mission deve ser null. Em reason_pt e suggestion, fale somente da frase em chinês: nunca mencione missão, objetivo, rodada, regras, instruções, JSON, modelo ou processo de avaliação. A explicação deve ser curta e em português.' },
+        { role: 'system', content: 'Avalie uma frase em mandarim. Responda somente JSON: {"grammatical":boolean,"natural":boolean,"coherent":boolean,"meets_mission":boolean|null,"translation_pt":string|null,"reason_pt":string,"suggestion":string|null}. Verifique gramática, naturalidade e coerência semântica. Se houver um sentido desejado, meets_mission é true quando a frase expressa esse sentido, mesmo com palavras diferentes ou com informação a mais (tempo, lugar, detalhes); a frase de referência é uma resposta correta, use-a para comparar. Sem sentido desejado, meets_mission deve ser null. Em reason_pt e suggestion, fale somente da frase em chinês: nunca mencione missão, objetivo, rodada, regras, instruções, JSON, modelo ou processo de avaliação. A explicação deve ser curta e em português.' },
         // Qwen3 reasons before answering unless told not to: the reasoning alone
         // used up a 250-token limit and the review came back empty ("não consegue verificar").
         // The generous limit keeps an answer coming even if it reasons anyway.
-        { role: 'user', content: `Frase: ${sentence}\n${mission ? `Sentido desejado: ${mission}` : 'Não há um sentido adicional exigido.'} /no_think` },
+        { role: 'user', content: `Frase: ${sentence}\n${mission ? `Sentido desejado: ${mission.meaning}\nFrase de referência: ${mission.reference}` :'Não há um sentido adicional exigido.'} /no_think` },
       ], response_format: { type: 'json_object' }, temperature: 0, max_tokens: 2_000,
     }) as ReviewResponse
     const review = parseReview(response.response ?? response.choices?.[0]?.message?.content)
-    if (review) await db.prepare('INSERT OR REPLACE INTO multiplayer_sentence_review_cache (sentence, context_hash, rubric_version, result_flags, payload, created_at) VALUES (?, ?, ?, ?, ?, ?)').bind(sentence, context, rubricVersion, reviewFlags(review), encodeReview(review), Math.floor(Date.now() / 1_000)).run().catch(() => {})
+    // A mission review without a mission verdict is incomplete: kept out of the cache so the
+    // next player gets a real one (a cached null once rejected 我吃鸡蛋。 for everyone).
+    if (review && (!mission || review.meetsMission !== null)) await db.prepare('INSERT OR REPLACE INTO multiplayer_sentence_review_cache (sentence, context_hash, rubric_version, result_flags, payload, created_at) VALUES (?, ?, ?, ?, ?, ?)').bind(sentence, context, rubricVersion, reviewFlags(review), encodeReview(review), Math.floor(Date.now() / 1_000)).run().catch(() => {})
     return { review, unavailable: review ? null : 'unavailable' }
   } catch (cause) {
     const message = cause instanceof Error ? cause.message : String(cause)

@@ -20,8 +20,12 @@ export type CurrentUser = {
   self_assessed_hsk_level: string | null;
   session_duration_minutes: number | null;
   study_difficulty?: StudyDifficulty;
-  /** 0: locked; 1: just unlocked, not announced yet; 2: unlocked. */
-  brutal_unlocked?: number;
+  /** HSK levels where Brutal is unlocked (10 Brutal rounds answered correctly there). */
+  brutal_levels?: string[];
+  /** A Brutal unlock not announced yet. */
+  brutal_notice?: boolean;
+  /** Above 85% in each of the last five Difícil sessions: surprise Brutal rounds are more frequent on Difícil. */
+  brutal_boost?: boolean;
   study_suggestion?: StudySuggestion;
 } | null;
 

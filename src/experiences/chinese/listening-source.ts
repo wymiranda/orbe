@@ -7,6 +7,10 @@ type ChineseSentence = { id: string; level: string; difficulty: 'easy' | 'medium
 type VocabularyReading = { hanzi: string; pinyin: string }
 
 const punctuation = new Set(['。', '？', '！', '，'])
+/** Chance of a surprise Brutal round per game, by the difficulty being played; none while playing Brutal itself. */
+const brutalSurpriseChances: Record<StudyDifficulty, number> = { easy: .001, medium: .003, hard: .01, brutal: 0 }
+/** On Difícil, for a learner above 85% in each of their last five Difícil sessions. */
+const boostedBrutalSurpriseChance = .05
 const readingPunctuation: Record<string, string> = { '。': '.', '？': '?', '！': '!', '，': ',' }
 
 /** Same ID format as the learning-path catalogue (`zh-hans:sentence:我喝茶`). */
@@ -46,10 +50,15 @@ export function preferStudiedSentences(sentences: ListeningSentence[], studied: 
  * - `studiedWord` tells which words the learner has already studied; see preferStudiedSentences.
  * - `choosable` (Jogos catalogue) lets the learner pick the level and the difficulty on the setup
  *   screen, starting from the given values, and plays exactly that part of the catalogue
- *   (HSK 2 · Fácil is only HSK 2 Fácil sentences), whatever the learner has studied.
- *   Brutal is offered only when `brutalUnlocked`.
+ *   (HSK 2 · Fácil is only HSK 2 Fácil sentences); with `studiedWord`, only its sentences whose
+ *   words the learner has all learned, except on Brutal.
+ *   Brutal is offered only at the HSK levels of `brutalLevels`.
+ * - `focusWords` (daily session): sentences with one of these words (its new words) are played first,
+ *   and those `playedLately` last.
+ * - `brutalBoost`: surprise Brutal rounds are more frequent on Difícil (see brutalSurpriseChances).
+ * - `onBrutalCorrect` receives the ID of each surprise Brutal sentence answered correctly.
  */
-export function createChineseListeningSource({ maxLevel = 2, maxDifficulty, studiedWord, strict = false, choosable }: { maxLevel?: number; maxDifficulty?: StudyDifficulty; studiedWord?: (hanzi: string) => boolean; strict?: boolean; choosable?: { level: string; difficulty: StudyDifficulty; brutalUnlocked: boolean } } = {}): ListeningSource {
+export function createChineseListeningSource({ maxLevel = 2, maxDifficulty, studiedWord, strict = false, choosable, focusWords = [], playedLately = () => false, brutalBoost = false, onBrutalCorrect }: { maxLevel?: number; maxDifficulty?: StudyDifficulty; studiedWord?: (hanzi: string) => boolean; strict?: boolean; focusWords?: string[]; playedLately?: (sentence: ListeningSentence) => boolean; brutalBoost?: boolean; choosable?: { level: string; difficulty: StudyDifficulty; brutalLevels: string[] }; onBrutalCorrect?: (sentenceId: string) => void } = {}): ListeningSource {
   return {
     language: 'zh-Hans',
     label: 'Mandarim',
@@ -57,7 +66,7 @@ export function createChineseListeningSource({ maxLevel = 2, maxDifficulty, stud
     missingVoiceMessage: 'Este aparelho não tem uma voz em chinês instalada. Instale uma nas configurações de texto para fala para jogar.',
     filters: choosable && [
       { id: 'level', label: 'Nível HSK', initial: choosable.level, options: sessionHskLevels.map((level) => ({ value: level, label: `HSK ${level}` })) },
-      { id: 'difficulty', label: 'Dificuldade', initial: choosable.difficulty, options: choosableDifficulties(choosable.brutalUnlocked).map((difficulty) => ({ value: difficulty, label: studyDifficultyLabels[difficulty] })) },
+      { id: 'difficulty', label: 'Dificuldade', initial: choosable.difficulty, options: choosableDifficulties(true).map((difficulty) => ({ value: difficulty, label: studyDifficultyLabels[difficulty], ...(difficulty === 'brutal' ? { visibleWhen: { id: 'level', values: choosable.brutalLevels } } : {}) })) },
     ],
     async loadSentences(selection) {
       const level = Number(selection?.level) || maxLevel
@@ -72,7 +81,12 @@ export function createChineseListeningSource({ maxLevel = 2, maxDifficulty, stud
           ? Number(sentence.level) === level && sentence.difficulty === difficulty
           : Number(sentence.level) <= level && (!difficulty || withinDifficulty(sentence.difficulty, difficulty)))
         .map((sentence) => toListeningSentence(sentence, pinyin))
-      return studiedWord && !choosable ? preferStudiedSentences(offered, studiedWord, { strict }) : offered
+      // Brutal is the one exception: its sentences may hold words not learned yet.
+      const preferred = studiedWord && difficulty !== 'brutal' ? preferStudiedSentences(offered, studiedWord, { strict: strict || Boolean(choosable) }) : offered
+      return preferred.map((sentence) => {
+        const priority = (sentence.priority ?? 0) - (sentence.tokens.some((token) => focusWords.includes(token)) ? 2 : 0) + (playedLately(sentence) ? 1 : 0)
+        return priority === (sentence.priority ?? 0) ? sentence : { ...sentence, priority }
+      })
     },
     async loadBrutalSentences() {
       const [sentences, vocabulary] = await Promise.all([
@@ -84,6 +98,11 @@ export function createChineseListeningSource({ maxLevel = 2, maxDifficulty, stud
         .filter((sentence) => Number(sentence.level) <= maxLevel && sentence.difficulty === 'brutal')
         .map((sentence) => toListeningSentence(sentence, pinyin))
     },
+    brutalSurpriseChance: (selection) => {
+      const playing = ((choosable ? selection.difficulty : maxDifficulty) as StudyDifficulty | undefined) ?? 'easy'
+      return playing === 'hard' && brutalBoost ? boostedBrutalSurpriseChance : brutalSurpriseChances[playing] ?? 0
+    },
+    onBrutalCorrect: (sentence) => onBrutalCorrect?.(sentence.id),
     voiceStatus: () => chineseVoiceStatus(),
     speak: (text) => { speakChinese(text) },
   }

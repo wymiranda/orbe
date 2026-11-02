@@ -1,9 +1,10 @@
 export type StudyDifficulty = 'easy' | 'medium' | 'hard' | 'brutal'
 export type StudySuggestion = { kind: 'difficulty'; difficulty: StudyDifficulty } | { kind: 'hsk'; hskLevel: string } | null
-export type User = { id: string; email: string; role: 'admin' | 'user'; is_teacher: boolean; display_name: string | null; self_assessed_hsk_level: string | null; session_duration_minutes: number | null; study_difficulty: StudyDifficulty; brutal_unlocked: number }
+export type User = { id: string; email: string; role: 'admin' | 'user'; is_teacher: boolean; display_name: string | null; self_assessed_hsk_level: string | null; session_duration_minutes: number | null; study_difficulty: StudyDifficulty }
 type StoredUser = User & { last_seen_at: string | null; study_suggestion_since: string | null }
 export type AuthEnv = {
   DB: D1Database
+  CHINESE_DB?: D1Database
   ADMIN_EMAIL?: string
   GOOGLE_CLIENT_ID?: string
   GOOGLE_CLIENT_SECRET?: string
@@ -69,7 +70,7 @@ async function upsertUser(email: string, env: AuthEnv) {
 export async function currentUser(request: Request, env: AuthEnv) {
   const id = sessionId(request)
   if (!id) return null
-  const user = await env.DB.prepare(`SELECT users.id, users.email, users.role, (users.role = 'admin' OR EXISTS(SELECT 1 FROM teacher_profiles WHERE teacher_profiles.user_id = users.id)) AS is_teacher, users.display_name, users.self_assessed_hsk_level, users.session_duration_minutes, users.study_difficulty, users.brutal_unlocked, users.study_suggestion_since, users.last_seen_at FROM auth_sessions JOIN users ON users.id = auth_sessions.user_id WHERE auth_sessions.id = ? AND auth_sessions.expires_at > ?`).bind(id, new Date().toISOString()).first<StoredUser>()
+  const user = await env.DB.prepare(`SELECT users.id, users.email, users.role, (users.role = 'admin' OR EXISTS(SELECT 1 FROM teacher_profiles WHERE teacher_profiles.user_id = users.id)) AS is_teacher, users.display_name, users.self_assessed_hsk_level, users.session_duration_minutes, users.study_difficulty, users.study_suggestion_since, users.last_seen_at FROM auth_sessions JOIN users ON users.id = auth_sessions.user_id WHERE auth_sessions.id = ? AND auth_sessions.expires_at > ?`).bind(id, new Date().toISOString()).first<StoredUser>()
   const now = new Date().toISOString()
   if (user && user.last_seen_at?.slice(0, 10) !== now.slice(0, 10)) await env.DB.prepare('UPDATE users SET last_seen_at = ? WHERE id = ?').bind(now, user.id).run()
   return user ? { ...user, is_teacher: Boolean(user.is_teacher) } : null
@@ -80,6 +81,25 @@ const studyDifficulties: StudyDifficulty[] = ['easy', 'medium', 'hard', 'brutal'
 const sessionHskLevels = ['1', '2']
 const suggestionSessions = 3
 const suggestionAccuracy = 0.85
+/** Sessions on Difícil, each above this accuracy, that make surprise Brutal rounds more frequent there. */
+const brutalBoostSessions = 5
+const brutalBoostAccuracy = 0.85
+
+/** The last five Difícil sessions at the learner's level, each above 85%. */
+async function brutalBoost(user: StoredUser, env: AuthEnv) {
+  const { results } = await env.DB.prepare("SELECT answers_correct, answers_total FROM user_study_session_logs WHERE user_id = ? AND completed_at IS NOT NULL AND difficulty = 'hard' AND hsk_level = ? AND answers_total > 0 ORDER BY completed_at DESC LIMIT ?")
+    .bind(user.id, user.self_assessed_hsk_level ?? '1', brutalBoostSessions).all<{ answers_correct: number; answers_total: number }>()
+  return results.length === brutalBoostSessions && results.every((session) => session.answers_correct / session.answers_total > brutalBoostAccuracy)
+}
+
+/** Different Brutal sentences of an HSK level answered correctly that make Brutal a playable level there, for good. */
+const brutalUnlockSentences = 10
+
+/** HSK levels where Brutal is a playable level, and whether an unlock still has to be announced. */
+async function brutalProgress(userId: string, env: AuthEnv) {
+  const { results } = await env.DB.prepare('SELECT hsk_level, notice_seen_at FROM user_brutal_unlocks WHERE user_id = ? ORDER BY hsk_level').bind(userId).all<{ hsk_level: string; notice_seen_at: string | null }>()
+  return { levels: results.map((row) => row.hsk_level), notice: results.some((row) => row.notice_seen_at === null) }
+}
 
 /** The last three sessions with answers, at the current level and difficulty, all at 85% or more. */
 async function strongAtCurrentSetting(user: StoredUser, env: AuthEnv) {
@@ -99,7 +119,8 @@ async function studySuggestion(user: StoredUser, env: AuthEnv): Promise<StudySug
 
 async function publicUser(user: StoredUser, env: AuthEnv) {
   const { study_suggestion_since: _since, last_seen_at: _seen, ...visible } = user
-  return { ...visible, study_suggestion: await studySuggestion(user, env) }
+  const brutal = await brutalProgress(user.id, env)
+  return { ...visible, study_suggestion: await studySuggestion(user, env), brutal_levels: brutal.levels, brutal_notice: brutal.notice, brutal_boost: await brutalBoost(user, env) }
 }
 
 async function createSession(userId: string, env: AuthEnv, secure: boolean) {
@@ -137,8 +158,10 @@ export async function handleAuth(request: Request, env: AuthEnv): Promise<Respon
     if (!user) return Response.json({ error: 'Faça login para continuar.' }, { status: 401 })
     const body = await request.json().catch(() => null) as { hskLevel?: unknown; difficulty?: unknown } | null
     const hskLevel = body?.hskLevel === undefined ? user.self_assessed_hsk_level : typeof body.hskLevel === 'string' && sessionHskLevels.includes(body.hskLevel) ? body.hskLevel : undefined
-    const difficulty = body?.difficulty === undefined ? user.study_difficulty : studyDifficulties.find((value) => value === body.difficulty)
-    if (hskLevel === undefined || !difficulty || (difficulty === 'brutal' && !user.brutal_unlocked)) return Response.json({ error: 'Escolha um nível e uma dificuldade válidos.' }, { status: 400 })
+    const brutalLevels = (await brutalProgress(user.id, env)).levels
+    // Moving to a level where Brutal is still locked keeps the learner on Difícil.
+    const difficulty = body?.difficulty === undefined ? (user.study_difficulty === 'brutal' && hskLevel && !brutalLevels.includes(hskLevel) ? 'hard' : user.study_difficulty) : studyDifficulties.find((value) => value === body.difficulty)
+    if (hskLevel === undefined || !difficulty || (difficulty === 'brutal' && !brutalLevels.includes(hskLevel ?? '1'))) return Response.json({ error: 'Escolha um nível e uma dificuldade válidos.' }, { status: 400 })
     const changed = hskLevel !== user.self_assessed_hsk_level || difficulty !== user.study_difficulty
     const now = new Date().toISOString()
     const since = changed ? now : user.study_suggestion_since
@@ -158,8 +181,23 @@ export async function handleAuth(request: Request, env: AuthEnv): Promise<Respon
   if (url.pathname === '/api/auth/brutal-notice/seen' && request.method === 'POST') {
     const user = await currentUser(request, env)
     if (!user) return Response.json({ error: 'Faça login para continuar.' }, { status: 401 })
-    await env.DB.prepare('UPDATE users SET brutal_unlocked = 2 WHERE id = ? AND brutal_unlocked = 1').bind(user.id).run()
+    await env.DB.prepare('UPDATE user_brutal_unlocks SET notice_seen_at = ? WHERE user_id = ? AND notice_seen_at IS NULL').bind(new Date().toISOString(), user.id).run()
     return new Response(null, { status: 204 })
+  }
+
+  // A Brutal sentence answered correctly. The same sentence counts once; the tenth
+  // different one of an HSK level makes Brutal a playable level there.
+  if (url.pathname === '/api/auth/brutal-progress' && request.method === 'POST') {
+    const user = await currentUser(request, env)
+    if (!user) return Response.json({ error: 'Faça login para continuar.' }, { status: 401 })
+    const body = await request.json().catch(() => null) as { sentenceId?: unknown } | null
+    const sentenceId = typeof body?.sentenceId === 'string' && body.sentenceId.length <= 120 ? body.sentenceId : null
+    const sentence = sentenceId && env.CHINESE_DB ? await env.CHINESE_DB.prepare("SELECT hsk_level FROM chinese_sentences WHERE id = ? AND difficulty = 'brutal'").bind(sentenceId).first<{ hsk_level: string }>() : null
+    if (!sentenceId || !sentence || !sessionHskLevels.includes(sentence.hsk_level)) return Response.json({ error: 'Frase Brutal inválida.' }, { status: 400 })
+    const now = new Date().toISOString()
+    await env.DB.prepare('INSERT OR IGNORE INTO user_brutal_correct_sentences (user_id, sentence_id, hsk_level, answered_at) VALUES (?, ?, ?, ?)').bind(user.id, sentenceId, sentence.hsk_level, now).run()
+    await env.DB.prepare('INSERT OR IGNORE INTO user_brutal_unlocks (user_id, hsk_level, unlocked_at) SELECT ?, ?, ? WHERE (SELECT COUNT(*) FROM user_brutal_correct_sentences WHERE user_id = ? AND hsk_level = ?) >= ?').bind(user.id, sentence.hsk_level, now, user.id, sentence.hsk_level, brutalUnlockSentences).run()
+    return Response.json({ user: await publicUser(user, env) })
   }
 
   if (url.pathname === '/api/auth/logout' && request.method === 'POST') {
@@ -210,8 +248,6 @@ export async function handleAuth(request: Request, env: AuthEnv): Promise<Respon
     const total = Number.isInteger(body?.answersTotal) && (body?.answersTotal as number) >= 0 && (body?.answersTotal as number) <= 10_000 ? body?.answersTotal as number : null
     const correct = total !== null && Number.isInteger(body?.answersCorrect) && (body?.answersCorrect as number) >= 0 && (body?.answersCorrect as number) <= total ? body?.answersCorrect as number : null
     await env.DB.prepare('UPDATE user_study_session_logs SET completed_at = COALESCE(completed_at, ?), answers_total = COALESCE(answers_total, ?), answers_correct = COALESCE(answers_correct, ?) WHERE id = ? AND user_id = ?').bind(new Date().toISOString(), correct === null ? null : total, correct, completeStudySession[1], user.id).run()
-    // Brutal unlocks after three strong sessions in a row on Difícil and stays unlocked.
-    if (!user.brutal_unlocked && user.study_difficulty === 'hard' && await strongAtCurrentSetting(user, env)) await env.DB.prepare('UPDATE users SET brutal_unlocked = 1 WHERE id = ? AND brutal_unlocked = 0').bind(user.id).run()
     return new Response(null, { status: 204 })
   }
 

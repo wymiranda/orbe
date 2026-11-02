@@ -25,24 +25,26 @@ function sentenceCost(tokens: string[], passes = 0) { return sentenceLength(toke
 const punctuation = ['。', '？']
 function currentSentenceRound(sentence: SentenceState) { return sentence.rounds[sentence.roundIndex] }
 function roundForOptions(sentence: SentenceState) { return sentenceMode(sentence) === 'mission' ? currentSentenceRound(sentence) : undefined }
-function wordOptions(tokens: string[], difficulty: SentenceDifficulty, round: ApprovedSentenceRound | undefined, references: string[][], shown: string[] = []) {
+/** `allowed` (a session): besides the cards the mission needs, the hand only holds words the learner has learned. */
+function wordOptions(tokens: string[], difficulty: SentenceDifficulty, round: ApprovedSentenceRound | undefined, references: string[][], shown: string[] = [], allowed?: string[]) {
+  const learned = (option: string) => !allowed || allowed.includes(option)
   const required = requiredMissionOptions(round, tokens).filter((option) => !punctuation.includes(option))
-  const opportunities = opportunityOptions(round, tokens).filter((option) => !punctuation.includes(option))
+  const opportunities = opportunityOptions(round, tokens).filter((option) => !punctuation.includes(option) && learned(option))
   // Validated continuations are an addition to the hand, never a replacement
   // for the other choices. This prevents a narrow continuation from leaving a
   // player with only one card.
-  const coherent = round ? [] : shuffle(coherentNextOptions(tokens, references).filter((option) => !punctuation.includes(option)))
-  const candidates = shuffle(sentenceOptions(tokens, references).filter((option) => !punctuation.includes(option)))
+  const coherent = round ? [] : shuffle(coherentNextOptions(tokens, references).filter((option) => !punctuation.includes(option) && learned(option)))
+  const candidates = shuffle(sentenceOptions(tokens, references).filter((option) => !punctuation.includes(option) && learned(option)))
   const fresh = candidates.filter((option) => !shown.includes(option))
   const repeated = candidates.filter((option) => shown.includes(option))
-  const filler = shuffle(sentenceVocabulary.filter((option) => !tokens.includes(option)))
+  const filler = shuffle([...sentenceVocabulary, ...(allowed ?? [])].filter((option) => !tokens.includes(option) && learned(option)))
   // The required cards are picked first so they always fit in the hand, but the
   // hand itself is shuffled: the answer must not sit in a predictable position.
   return shuffle([...new Set([...required, ...opportunities, ...coherent, ...fresh, ...repeated, ...filler])].slice(0, sentenceOptionCount[difficulty]))
 }
 function refreshSentenceOptions(sentence: SentenceState) {
   const shown = sentence.shownOptions ?? []
-  const next = wordOptions(sentence.tokens, sentence.difficulty, roundForOptions(sentence), sentence.referenceSentences, shown)
+  const next = wordOptions(sentence.tokens, sentence.difficulty, roundForOptions(sentence), sentence.referenceSentences, shown, sentence.allowedWords)
   sentence.wordOptions = next
   sentence.shownOptions = [...new Set([...shown, ...next])].slice(-72)
 }
@@ -136,7 +138,7 @@ type Vocabulary = { id: string; hanzi: string; portuguese: string }
 type Round = { id: string; prompt: string; choices: Choice[]; answer: string }
 type Player = { id: string; email: string; score: number }
 type ScoreBreakdown = { speed: number; length: number; difficulty: number; expansion: number; opportunity: number }
-type SentenceState = { roundModes: ('free' | 'mission')[]; difficulty: SentenceDifficulty; level: string; rounds: ApprovedSentenceRound[]; referenceSentences: string[][]; roundIndex: number; nodeId: string; tokens: string[]; passes: number; wordOptions: string[]; shownOptions: string[]; turnId: string | null; phase: 'intro' | 'building' | 'reviewing'; introEndsAt: number | null; roundStartedAt: number | null; turnStartedAt: number | null; speedPenalty: number; turnEndsAt: number | null; teamScore: number; result: 'valid' | 'invalid' | 'unknown' | null; lastPoints: number; scoreBreakdown: ScoreBreakdown | null; botActionAt: number | null; reviewAt: number | null; review: SentenceReview | null; reviewUnavailable: 'daily-limit' | 'unavailable' | null }
+type SentenceState = { roundModes: ('free' | 'mission')[]; difficulty: SentenceDifficulty; level: string; rounds: ApprovedSentenceRound[]; referenceSentences: string[][]; roundIndex: number; nodeId: string; tokens: string[]; passes: number; wordOptions: string[]; shownOptions: string[]; turnId: string | null; phase: 'intro' | 'building' | 'reviewing'; introEndsAt: number | null; roundStartedAt: number | null; turnStartedAt: number | null; speedPenalty: number; turnEndsAt: number | null; teamScore: number; result: 'valid' | 'invalid' | 'unknown' | null; lastPoints: number; scoreBreakdown: ScoreBreakdown | null; botActionAt: number | null; reviewAt: number | null; review: SentenceReview | null; reviewUnavailable: 'daily-limit' | 'unavailable' | null; allowedWords?: string[] }
 type Room = { code: string; hostId: string; title: string; game: 'flash' | 'sentence'; rounds: Round[]; players: Player[]; status: 'lobby' | 'playing' | 'finished'; index: number; answeredIds: string[]; roundEndsAt: number | null; advanceAt: number | null; lobbyExpiresAt: number | null; soloSession?: boolean; sentence?: SentenceState }
 function botChoice(sentence: SentenceState, choices: string[]) {
   const target = requiredMissionOptions(roundForOptions(sentence), sentence.tokens)[0]
@@ -229,13 +231,18 @@ export class MultiplayerRoom {
     sentence.reviewAt = null
     const mode = sentenceMode(sentence)
     const round = currentSentenceRound(sentence)
-    const objective = mode === 'mission' ? [round.mission, formLabel(round.form)].filter(Boolean).join(' ') : undefined
+    // The model gets the meaning without the "Monte:" command, plus the curated answer to compare with.
+    const objective = mode === 'mission' ? { meaning: [round.mission.replace(/^Monte:\s*/i, ''), formLabel(round.form)].filter(Boolean).join(' '), reference: round.answer.join('') } : undefined
     const reviewed = await reviewChineseSentence(this.env.AI, this.env.DB, sentence.tokens.join(''), objective)
     const review = reviewed.review
     sentence.review = review; sentence.reviewUnavailable = reviewed.unavailable
     const localValid = mode === 'mission' ? missionMatches(round, sentence.tokens) && formMatches(round.form, sentence.tokens) : sentence.tokens.length >= 2
+    // The curated answer is right by definition, whatever the model says: a wrong
+    // "não cumpre" from the model used to reject 我吃鸡蛋。 for "Monte: Eu como ovos."
+    const curatedAnswer = mode === 'mission' && sentence.tokens.filter((token) => !punctuation.includes(token)).join('') === round.answer.filter((token) => !punctuation.includes(token)).join('') && formMatches(round.form, sentence.tokens)
     if (!review && mode === 'free') { sentence.result = 'unknown'; return }
-    const valid = review ? review.grammatical && review.natural && review.coherent && (mode === 'free' || review.meetsMission === true) : localValid
+    // A sentence that contains the curated answer meets the mission; the model only judges it as Chinese.
+    const valid = curatedAnswer || (review ? review.grammatical && review.natural && review.coherent && (mode === 'free' || localValid || review.meetsMission === true) : localValid)
     if (valid) {
       const words = sentence.tokens.filter((token) => !punctuation.includes(token))
       const speed = Math.max(0, 60 - (sentence.speedPenalty ?? 0))
@@ -255,7 +262,7 @@ export class MultiplayerRoom {
 
     if (url.pathname === '/create' && request.method === 'POST') {
       if (await this.room()) return Response.json({ error: 'Código já utilizado.' }, { status: 409 })
-      const input = await request.json<{ level?: unknown; mode?: unknown; count?: unknown; game?: unknown; difficulty?: unknown; roundIds?: unknown; soloSession?: unknown }>().catch(() => null)
+      const input = await request.json<{ level?: unknown; mode?: unknown; count?: unknown; game?: unknown; difficulty?: unknown; roundIds?: unknown; soloSession?: unknown; knownWords?: unknown }>().catch(() => null)
       const level = typeof input?.level === 'string' ? input.level : ''
       const mode = input?.mode === 'recognition' || input?.mode === 'hsk-mock' ? input.mode : 'recognition'
       const game = input?.game === 'sentence' ? 'sentence' : 'flash'
@@ -267,6 +274,7 @@ export class MultiplayerRoom {
         const { results: reviewedSentences } = await this.env.DB.prepare('SELECT sentence FROM multiplayer_sentence_review_cache WHERE (result_flags & 7) = 7 ORDER BY created_at DESC LIMIT 50').all<{ sentence: string }>()
         const requestedRoundIds = Array.isArray(input?.roundIds) ? input.roundIds.filter((id): id is string => typeof id === 'string') : []
         const soloSession = input?.soloSession === true && requestedRoundIds.length > 0
+        const allowedWords = soloSession && Array.isArray(input?.knownWords) ? input.knownWords.filter((word): word is string => typeof word === 'string' && word.length <= 12).slice(0, 5_000) : undefined
         const approvedSentenceRounds = roundsFromSentences(await loadChineseSentences(this.env.CHINESE_DB))
         const sentenceRounds = requestedRoundIds.length ? requestedRoundIds.map((id) => approvedSentenceRounds.find((round) => round.id === id)).filter((round): round is ApprovedSentenceRound => Boolean(round)) : roundsForDifficulty(approvedSentenceRounds, difficulty, level, [])
         if (!sentenceRounds.length || (!requestedRoundIds.length && sentenceRounds.length < 10)) return Response.json({ error: 'Ainda não há missões suficientes para este nível.' }, { status: 400 })
@@ -274,8 +282,8 @@ export class MultiplayerRoom {
         const code = this.state.id.name ?? ''
         const approvedAnswers = approvedSentenceRounds.map((round) => round.answer)
         const referenceSentences = [...approvedAnswers, ...reviewedSentences.map((item) => tokenizeSentenceReference(item.sentence, approvedAnswers)).filter((tokens): tokens is string[] => tokens !== null)]
-        const initialOptions = wordOptions([], difficulty, sentenceRounds[0], referenceSentences)
-        const room: Room = { code, hostId: user.id, game, title: 'Construção cooperativa', rounds: [], players: [{ id: user.id, email: safeEmail(user.email), score: 0 }], status: 'lobby', index: 0, answeredIds: [], roundEndsAt: null, advanceAt: null, lobbyExpiresAt: null, soloSession, sentence: { roundModes, difficulty, level, rounds: sentenceRounds, referenceSentences, roundIndex: 0, nodeId: 'n0', tokens: [], passes: 0, wordOptions: initialOptions, shownOptions: initialOptions, turnId: null, phase: 'intro', introEndsAt: null, roundStartedAt: null, turnStartedAt: null, speedPenalty: 0, turnEndsAt: null, teamScore: 0, result: null, lastPoints: 0, scoreBreakdown: null, botActionAt: null, reviewAt: null, review: null, reviewUnavailable: null } }
+        const initialOptions = wordOptions([], difficulty, sentenceRounds[0], referenceSentences, [], allowedWords)
+        const room: Room = { code, hostId: user.id, game, title: 'Construção cooperativa', rounds: [], players: [{ id: user.id, email: safeEmail(user.email), score: 0 }], status: 'lobby', index: 0, answeredIds: [], roundEndsAt: null, advanceAt: null, lobbyExpiresAt: null, soloSession, sentence: { roundModes, difficulty, level, rounds: sentenceRounds, referenceSentences, roundIndex: 0, nodeId: 'n0', tokens: [], passes: 0, wordOptions: initialOptions, shownOptions: initialOptions, turnId: null, phase: 'intro', introEndsAt: null, roundStartedAt: null, turnStartedAt: null, speedPenalty: 0, turnEndsAt: null, teamScore: 0, result: null, lastPoints: 0, scoreBreakdown: null, botActionAt: null, reviewAt: null, review: null, reviewUnavailable: null, allowedWords } }
         await this.extendLobby(room)
         await this.save(room)
         return Response.json({ room: publicRoom(room, this.onlineIds()) }, { status: 201 })

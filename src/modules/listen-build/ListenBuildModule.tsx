@@ -14,8 +14,17 @@ import { answerIsCorrect, buildRound, buildRounds, type ListeningRound, type Lis
 export const listeningGameName = 'Ouça e monte'
 export type { ListeningSentence } from './listen-build'
 export type ListeningVoiceStatus = 'available' | 'missing' | 'unknown' | 'unsupported'
-/** A choice of the setup screen (level, difficulty…); its value is handed back to loadSentences. */
-export type ListeningFilter = { id: string; label: string; options: { value: string; label: string }[]; initial: string }
+/**
+ * A choice of the setup screen (level, difficulty…); its value is handed back to loadSentences.
+ * An option with `visibleWhen` is offered only while another choice has one of the given values.
+ */
+export type ListeningFilter = { id: string; label: string; options: { value: string; label: string; visibleWhen?: { id: string; values: string[] } }[]; initial: string }
+
+function visibleOptions(filter: ListeningFilter, selection: Record<string, string>) { return filter.options.filter((option) => !option.visibleWhen || option.visibleWhen.values.includes(selection[option.visibleWhen.id])) }
+/** A choice whose option is no longer offered falls back to the last one offered (Brutal → Difícil). */
+function offeredSelection(filters: ListeningFilter[], selection: Record<string, string>) {
+  return Object.fromEntries(filters.map((filter) => { const options = visibleOptions(filter, selection); const value = selection[filter.id] ?? filter.initial; return [filter.id, options.some((option) => option.value === value) ? value : options.at(-1)?.value ?? value] }))
+}
 
 export type ListeningSource = {
   /** BCP-47 language of the sentences, reported with the activity result. */
@@ -31,6 +40,10 @@ export type ListeningSource = {
   loadSentences: (selection?: Record<string, string>) => Promise<ListeningSentence[]>
   /** Rare high-stakes round injected into an otherwise ordinary session. */
   loadBrutalSentences?: () => Promise<ListeningSentence[]>
+  /** Chance (0–1) of a Brutal round in a game with the given setup choices. */
+  brutalSurpriseChance?: (selection: Record<string, string>) => number
+  /** A Brutal round was answered correctly (it counts towards unlocking Brutal). */
+  onBrutalCorrect?: (sentence: ListeningSentence) => void
   voiceStatus: () => Promise<ListeningVoiceStatus>
   speak: (text: string) => void
 }
@@ -39,7 +52,6 @@ type Attempt = { sentence: ListeningSentence; correct: boolean; responseMs: numb
 
 const counts = [5, 10]
 const sessionCount = 3
-const brutalSurpriseChance = .01
 
 function ListenBuildModule({ source, embedded = false, activity, sessionMode = false, onComplete, onExit, onUnavailable }: {
   source: ListeningSource
@@ -55,7 +67,7 @@ function ListenBuildModule({ source, embedded = false, activity, sessionMode = f
   const [sentences, setSentences] = useState<ListeningSentence[] | null>(null)
   const [voice, setVoice] = useState<ListeningVoiceStatus | null>(null)
   const [count, setCount] = useState(5)
-  const [selection, setSelection] = useState<Record<string, string>>(() => Object.fromEntries((source.filters ?? []).map((filter) => [filter.id, filter.initial])))
+  const [selection, setSelection] = useState<Record<string, string>>(() => offeredSelection(source.filters ?? [], Object.fromEntries((source.filters ?? []).map((filter) => [filter.id, filter.initial]))))
   const [rounds, setRounds] = useState<ListeningRound[]>([])
   const [index, setIndex] = useState(0)
   const [chosen, setChosen] = useState<string[]>([])
@@ -100,7 +112,7 @@ function ListenBuildModule({ source, embedded = false, activity, sessionMode = f
     if (!available.length) { setError('Ainda não há frases suficientes para jogar.'); return }
     let nextRounds = buildRounds(available, amount)
     let nextBrutalIndex: number | null = null
-    if (source.loadBrutalSentences && Math.random() < brutalSurpriseChance) {
+    if (source.loadBrutalSentences && Math.random() < (source.brutalSurpriseChance?.(selection) ?? 0)) {
       try {
         const brutalSentences = (await source.loadBrutalSentences()).filter((sentence) => sentence.tokens.length >= 2)
         const surprise = brutalSentences[Math.floor(Math.random() * brutalSentences.length)]
@@ -140,7 +152,9 @@ function ListenBuildModule({ source, embedded = false, activity, sessionMode = f
   function check() {
     if (!current || checked || !chosen.length) return
     setChecked(true)
-    setAttempts((items) => [...items, { sentence: current.sentence, correct: answerIsCorrect(current, chosen), responseMs: Math.round(performance.now() - startedAt.current) }])
+    const correct = answerIsCorrect(current, chosen)
+    if (correct && index === brutalRoundIndex) source.onBrutalCorrect?.(current.sentence)
+    setAttempts((items) => [...items, { sentence: current.sentence, correct, responseMs: Math.round(performance.now() - startedAt.current) }])
   }
 
   function next() {
@@ -204,7 +218,7 @@ function ListenBuildModule({ source, embedded = false, activity, sessionMode = f
     <h1>{listeningGameName}</h1>
     <p className="intro">{source.intro}</p>
     {message && <p className="error" role="alert">{message}</p>}
-    {source.filters?.map((filter) => <label key={filter.id} className="quiz-picker">{filter.label}<select value={selection[filter.id] ?? filter.initial} onChange={(event) => { setError(''); setSelection((current) => ({ ...current, [filter.id]: event.target.value })) }}>{filter.options.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</select></label>)}
+    {source.filters?.map((filter) => <label key={filter.id} className="quiz-picker">{filter.label}<select value={selection[filter.id] ?? filter.initial} onChange={(event) => { setError(''); setSelection((current) => offeredSelection(source.filters ?? [], { ...current, [filter.id]: event.target.value })) }}>{visibleOptions(filter, selection).map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</select></label>)}
     <label className="quiz-picker">Quantidade<select value={count} onChange={(event) => setCount(Number(event.target.value))}>{counts.map((value) => <option key={value} value={value}>{value} frases</option>)}</select></label>
     <div className="picture-game-actions">
       <button type="button" onClick={() => void start()} disabled={!playable}>Jogar</button>

@@ -18,8 +18,17 @@ import { useSpeechRecognition } from './useSpeechRecognition'
 export const speakingGameName = 'Solte a Voz'
 export type { SpeakingItem } from './speak-aloud'
 
-/** A choice of the setup screen; shown only while another choice has the given value, when set. */
-export type SpeakingFilter = { id: string; label: string; options: { value: string; label: string }[]; initial: string; visibleWhen?: { id: string; value: string } }
+/**
+ * A choice of the setup screen; shown only while another choice has the given value, when set.
+ * An option with `visibleWhen` is offered only while another choice has one of the given values.
+ */
+export type SpeakingFilter = { id: string; label: string; options: { value: string; label: string; visibleWhen?: { id: string; values: string[] } }[]; initial: string; visibleWhen?: { id: string; value: string } }
+
+function visibleOptions(filter: SpeakingFilter, selection: Record<string, string>) { return filter.options.filter((option) => !option.visibleWhen || option.visibleWhen.values.includes(selection[option.visibleWhen.id])) }
+/** A choice whose option is no longer offered falls back to the last one offered (Brutal → Difícil). */
+function offeredSelection(filters: SpeakingFilter[], selection: Record<string, string>) {
+  return Object.fromEntries(filters.map((filter) => { const options = visibleOptions(filter, selection); const value = selection[filter.id] ?? filter.initial; return [filter.id, options.some((option) => option.value === value) ? value : options.at(-1)?.value ?? value] }))
+}
 
 export type SpeakingSource = {
   /** BCP-47 language of the items, reported with the activity result. */
@@ -48,7 +57,7 @@ function SpeakAloudModule({ source, engine, embedded = false, onExit }: {
   onExit?: () => void | Promise<void>
 }) {
   const recognition = useSpeechRecognition({ language: source.recognitionLanguage, engine, onResult: compare })
-  const [selection, setSelection] = useState<Record<string, string>>(() => Object.fromEntries((source.filters ?? []).map((filter) => [filter.id, filter.initial])))
+  const [selection, setSelection] = useState<Record<string, string>>(() => offeredSelection(source.filters ?? [], Object.fromEntries((source.filters ?? []).map((filter) => [filter.id, filter.initial]))))
   const [items, setItems] = useState<SpeakingItem[] | null>(null)
   const [count, setCount] = useState(5)
   const [rounds, setRounds] = useState<SpeakingItem[]>([])
@@ -165,7 +174,7 @@ function SpeakAloudModule({ source, engine, embedded = false, onExit }: {
     <h1>{speakingGameName}</h1>
     <p className="intro">{source.intro}</p>
     {message && <p className="error" role="alert">{message}</p>}
-    {source.filters?.filter(visible).map((filter) => <label key={filter.id} className="quiz-picker">{filter.label}<select value={selection[filter.id] ?? filter.initial} onChange={(event) => { setError(''); setSelection((currentSelection) => ({ ...currentSelection, [filter.id]: event.target.value })) }}>{filter.options.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</select></label>)}
+    {source.filters?.filter(visible).map((filter) => <label key={filter.id} className="quiz-picker">{filter.label}<select value={selection[filter.id] ?? filter.initial} onChange={(event) => { setError(''); setSelection((currentSelection) => offeredSelection(source.filters ?? [], { ...currentSelection, [filter.id]: event.target.value })) }}>{visibleOptions(filter, selection).map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</select></label>)}
     <label className="quiz-picker">Quantidade<select value={count} onChange={(event) => setCount(Number(event.target.value))}>{counts.map((value) => <option key={value} value={value}>{value}</option>)}</select></label>
     <p className="speak-aloud-note">O jogo compara o texto reconhecido pelo navegador com a resposta. Ele não avalia sua pronúncia nem os tons.</p>
     <p className="speak-aloud-note">Dependendo do navegador, o áudio pode ser processado por um serviço externo. O Niorb não grava nem envia seu áudio.</p>

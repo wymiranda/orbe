@@ -12,6 +12,8 @@ export type FlashcardFace = {
   /** Text read aloud by the speak button; no button without it. */
   speech?: string | null
   visual?: { kind: 'emoji' | 'svg' | 'image'; value: string } | null
+  /** How to use a word that works as grammar, shown when the card presents the word; examples can be heard. */
+  explanation?: { text: string; examples: { text: string; reading: string; meaning: string }[] } | null
   /** Extra classes for long or Latin-script texts. */
   frontClassName?: string
   meaningClassName?: string

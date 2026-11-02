@@ -98,11 +98,9 @@ export function DailySessionHome({
   savingSettings?: boolean;
 }) {
   const difficulty = user?.study_difficulty ?? "easy";
-  const brutalUnlocked = Boolean(user?.brutal_unlocked);
-  const difficulties = choosableDifficulties(brutalUnlocked);
   const suggestion = user?.study_suggestion ?? null;
   // Announced once: the server is told right away, the notice stays until the page changes.
-  const [brutalNotice] = useState(user?.brutal_unlocked === 1);
+  const [brutalNotice] = useState(Boolean(user?.brutal_notice));
   useEffect(() => { if (brutalNotice) onBrutalNoticeSeen(); }, [brutalNotice]);
   const name = user?.display_name?.trim().split(/\s+/)[0] ?? "";
   const activeLevel = [...overview.hsk]
@@ -110,6 +108,7 @@ export function DailySessionHome({
     .find((level) => level.learned < level.total) ?? overview.hsk[0];
   const sessionDuration = user?.session_duration_minutes ?? 15;
   const referenceLevel = user?.self_assessed_hsk_level ?? activeLevel?.hsk_level ?? "1";
+  const difficulties = choosableDifficulties(Boolean(user?.brutal_levels?.includes(referenceLevel)));
   const activity = loadDeviceProgress().activity;
   const streak = studyStreak(activity);
   const reviewMinutes = Math.max(1, Math.ceil((overview.dueCount * 20) / 60));

@@ -134,6 +134,8 @@ export function nextReview(card: Pick<DeviceCard, 'intervalDays' | 'ease' | 'isN
   if (rating === 'easy') { intervalDays = card.isNew ? 4 : Math.max(normalInterval + 1, Math.round(base * (card.ease + 1.3))); ease += 0.15 }
   return { intervalDays, ease, dueAt: new Date(Date.now() + (rating === 'again' ? 600000 : intervalDays * 86400000)).toISOString() }
 }
+/** Whether rating the card now sets its next review: it is new, or its review is due. */
+export function reviewCounts(card: Pick<DeviceCard, 'isNew' | 'dueAt'>, now = new Date().toISOString()) { return card.isNew || card.dueAt <= now }
 export function setCardLearned(progress: DeviceProgress, vocabularyId: string) { const card = progress.cards.find((item) => item.vocabularyId === vocabularyId); if (!card) return; card.updatedAt = Date.now(); queueUpsert(progress, card) }
 export function setVocabularyLearned(progress: DeviceProgress, vocabularyId: string) { progress.vocabulary[vocabularyId] = 'learned'; progress.vocabularySync[vocabularyId] = { vocabularyId, status: 'learned', updatedAt: Date.now() } }
 export function unsetVocabularyLearned(progress: DeviceProgress, vocabularyId: string) { delete progress.vocabulary[vocabularyId]; progress.vocabularySync[vocabularyId] = { vocabularyId, status: 'unlearned', updatedAt: Date.now() } }
@@ -158,7 +160,12 @@ export function createProgressStore({ storageKey, changeEvent }: { storageKey: s
     acknowledgeVocabularyChanges(progress: DeviceProgress, sent: VocabularySyncChange[]) { for (const change of sent) if (JSON.stringify(progress.vocabularySync[change.vocabularyId]) === JSON.stringify(change)) delete progress.vocabularySync[change.vocabularyId]; save(progress) },
     createCard(progress: DeviceProgress, vocabularyId: string) { if (progress.cards.some((card) => card.vocabularyId === vocabularyId)) return false; const card: DeviceCard = { vocabularyId, dueAt: new Date().toISOString(), intervalDays: 0, ease: 2.5, isNew: true, updatedAt: Date.now() }; progress.cards.push(card); queueUpsert(progress, card); save(progress); return true },
     createCardsForVocabulary(progress: DeviceProgress, vocabularyIds: string[]) { const existing = new Set(progress.cards.map((card) => card.vocabularyId)); const now = new Date().toISOString(); const updatedAt = Date.now(); const cards = [...new Set(vocabularyIds)].filter((id) => !existing.has(id)).map((vocabularyId) => ({ vocabularyId, dueAt: now, intervalDays: 0, ease: 2.5, isNew: true, updatedAt })); progress.cards.push(...cards); for (const card of cards) queueUpsert(progress, card); if (cards.length) save(progress); return cards.length },
-    rateCard(progress: DeviceProgress, vocabularyId: string, rating: Rating) { const card = progress.cards.find((item) => item.vocabularyId === vocabularyId); if (!card) return null; const next = nextReview(card, rating); card.intervalDays = next.intervalDays; card.ease = next.ease; card.isNew = false; card.dueAt = next.dueAt; card.updatedAt = Date.now(); recordStudyActivity(progress, { reviews: 1, retained: rating === 'again' ? 0 : 1 }); queueUpsert(progress, card); save(progress); return card },
+    /**
+     * The rating sets the next review only for a new card or a card whose review is due. A card a
+     * session shows before that (weak words, words it reviews again) keeps its schedule: rating it
+     * "easy" there used to stretch its interval once more each time.
+     */
+    rateCard(progress: DeviceProgress, vocabularyId: string, rating: Rating) { const card = progress.cards.find((item) => item.vocabularyId === vocabularyId); if (!card) return null; if (reviewCounts(card)) { const next = nextReview(card, rating); card.intervalDays = next.intervalDays; card.ease = next.ease; card.isNew = false; card.dueAt = next.dueAt; card.updatedAt = Date.now(); queueUpsert(progress, card) }; recordStudyActivity(progress, { reviews: 1, retained: rating === 'again' ? 0 : 1 }); save(progress); return card },
     removeCard(progress: DeviceProgress, vocabularyId: string) { const deletedAt = Date.now(); progress.cards = progress.cards.filter((card) => card.vocabularyId !== vocabularyId); progress.studyTombstones[vocabularyId] = deletedAt; progress.studySync[vocabularyId] = { op: 'remove', vocabularyId, deletedAt }; save(progress) },
   }
 }

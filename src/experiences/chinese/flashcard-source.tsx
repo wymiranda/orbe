@@ -2,6 +2,7 @@ import type { FlashcardSource } from '../../modules/study/flashcard-source'
 import { chineseProgressStore, chineseVocabularyEvent, loadOfflineVocabulary, saveOfflineVocabulary, type OfflineVocabulary } from './device-progress'
 import { HskBulkAdd, StudyOptions } from './workspace/flashcard-dashboard'
 import { NewWordsWall } from './workspace/session-summary'
+import { wordExplanations } from './word-explanations'
 
 function speakChinese(text: string) {
   if (!('speechSynthesis' in window)) return false
@@ -26,7 +27,7 @@ export function chineseFlashcardSource(wallLevel?: string): FlashcardSource<Offl
     },
     cachedVocabulary: () => loadOfflineVocabulary(),
     vocabularyEvent: chineseVocabularyEvent,
-    face: (item) => ({ front: item.hanzi, reading: item.pinyin, meaning: item.portuguese, detail: `${item.english} · HSK ${item.hsk_level}`, speech: item.hanzi, visual: item.visual_kind && item.visual_value ? { kind: item.visual_kind, value: item.visual_value } : null }),
+    face: (item) => ({ front: item.hanzi, reading: item.pinyin, meaning: item.portuguese, detail: `${item.english} · HSK ${item.hsk_level}`, speech: item.hanzi, explanation: wordExplanations[item.hanzi] ?? null, visual: item.visual_kind && item.visual_value ? { kind: item.visual_kind, value: item.visual_value } : null }),
     speak: speakChinese,
     dashboardBottom: (context) => <><HskBulkAdd {...context} /><StudyOptions {...context} /></>,
     sessionComplete: wallLevel ? (introduced, vocabulary) => <NewWordsWall newWords={introduced} level={wallLevel} vocabulary={vocabulary} /> : undefined,

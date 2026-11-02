@@ -23,6 +23,8 @@ export type PictureTerm = {
   meaning: string
   visual_kind: VisualKind | null
   visual_value: string | null
+  /** Lower is asked first (the new words of a session); 0 by default. */
+  priority?: number
 }
 export type PictureGameSource = {
   /** BCP-47 language of the studied terms, reported with the activity result. */
@@ -47,7 +49,8 @@ export function hasVisual(term: PictureTerm) { return Boolean(term.visual_kind &
 function visualKey(term: PictureTerm) { return `${term.visual_kind}:${term.visual_value}` }
 
 function buildQuestions(pool: PictureTerm[], answers: PictureTerm[], count: number): Question[] {
-  return shuffle(answers).slice(0, count).map((term) => {
+  const levels = [...new Set(answers.map((term) => term.priority ?? 0))].sort((left, right) => left - right)
+  return levels.flatMap((level) => shuffle(answers.filter((term) => (term.priority ?? 0) === level))).slice(0, count).map((term) => {
     // Distractors never share the answer's picture, so every option is distinguishable.
     const seen = new Set([visualKey(term)])
     const distractors = shuffle(pool.filter((other) => other.id !== term.id)).filter((other) => {

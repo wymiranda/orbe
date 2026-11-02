@@ -54,6 +54,10 @@ function offeredCard(vocabularyId: string): DeviceCard { return { vocabularyId, 
  * level, one deck…); with `offerVocabulary` every one of them without a card
  * can be introduced as new, its card created at that moment.
  */
+/** Delays before a new word is read aloud on its own, in milliseconds (see the effect in StudyModule). */
+const firstWordAutoPlayDelay = 600
+const nextWordAutoPlayDelay = 350
+
 function StudyModule<T extends Item>({ source, vocabulary: givenVocabulary, offerVocabulary = false, embedded = false, activity, activityStage, skipActivityIntroduction = false, onComplete, onExit }: { source: FlashcardSource<T>; vocabulary?: T[]; offerVocabulary?: boolean; embedded?: boolean; activity?: ActivityRequest | null; activityStage?: 'learn' | 'review'; skipActivityIntroduction?: boolean; onComplete?: (result: ActivityResult) => void | Promise<void>; onExit?: () => void | Promise<void> }) {
   const { store } = source
   const [progress, setProgress] = useState<DeviceProgress>(() => store.load())
@@ -117,6 +121,20 @@ function StudyModule<T extends Item>({ source, vocabulary: givenVocabulary, offe
   const cardsById = new Map(cards.map((card) => [card.vocabularyId, card]))
   const sessionCard = session?.ready ? cardsById.get(session.pendingIds[0]) ?? null : null
   const face = sessionCard ? source.face(sessionCard.vocabulary) : null
+  // A new word is heard as soon as the learner can take it in. The first card waits for the whole
+  // screen to change (about 600 ms to settle on a new layout); the next ones for the card to be read
+  // (about 350 ms: noticing the change, then looking at the word). ▶ still plays it again.
+  const autoPlayedCard = useRef<string | null>(null)
+  const learningCardId = session?.phase === 'learn-new' && face?.speech ? sessionCard?.vocabularyId ?? null : null
+  useEffect(() => {
+    if (!learningCardId || !face?.speech) { if (!session) autoPlayedCard.current = null; return }
+    const delay = autoPlayedCard.current === null ? firstWordAutoPlayDelay : nextWordAutoPlayDelay
+    autoPlayedCard.current = learningCardId
+    const text = face.speech
+    const timer = window.setTimeout(() => { source.speak(text) }, delay)
+    return () => window.clearTimeout(timer)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [learningCardId])
 
   function deckCards() { return studyCards(store.load()) }
   function showDeckStep(deck: DeckSession) {
@@ -214,6 +232,7 @@ function StudyModule<T extends Item>({ source, vocabulary: givenVocabulary, offe
           <CardVisual visual={face.visual} />
           {session.phase === 'learn-new' ? <div className="focus-answer">
             {face.reading && <p>{face.reading}</p>}{face.speech && <button type="button" className="secondary focus-speak" onClick={() => speak(face.speech!)} aria-label="Ouvir pronúncia" title="Ouvir pronúncia">▶</button>}<h2 className={face.meaningClassName}>{face.meaning}</h2>{face.detail && <small>{face.detail}</small>}
+            {face.explanation && <div className="focus-explanation"><p>{face.explanation.text}</p><ul>{face.explanation.examples.map((example) => <li key={example.text}><button type="button" className="secondary focus-speak" onClick={() => speak(example.text)} aria-label="Ouvir pronúncia" title="Ouvir pronúncia">▶</button><span><strong lang="zh-Hans">{example.text}</strong><small>{example.reading}</small><em>{example.meaning}</em></span></li>)}</ul></div>}
             <div className="focus-card-actions"><button type="button" onClick={finishIntroduction}>OK, estudar este card</button></div>
           </div> : !session.answerVisible ? <div className="focus-reveal-actions">{face.speech && <button type="button" className="secondary focus-speak" onClick={() => speak(face.speech!)} aria-label="Ouvir pronúncia" title="Ouvir pronúncia">▶</button>}<button type="button" className="reveal-answer" onClick={() => setSession({ ...session, answerVisible: true })}>Mostrar resposta</button></div> : <div className="focus-answer">
             {face.reading && <p>{face.reading}</p>}<h2 className={face.meaningClassName}>{face.meaning}</h2>{face.detail && <small>{face.detail}</small>}
@@ -225,6 +244,8 @@ function StudyModule<T extends Item>({ source, vocabulary: givenVocabulary, offe
     </main>
   }
 
+  // An activity opens its first card by itself: the deck's dashboard is never shown in between.
+  if (activity && (due.length > 0 || newCards.length > 0) && (skipActivityIntroduction || activityIntroductionSeen)) return <main className="study-session session-game-session" aria-busy="true"><section className="study-session-content"><div className="session-game-loading" /></section></main>
   const dashboard: FlashcardDashboardContext<T> = { vocabulary, progress, canStudy, dueCount: due.length, newCount: newCards.length, learningCount: learning, startSession, refresh }
   return <main className={embedded ? 'workspace-view' : 'app-shell'}>
     {!embedded && <header className="app-header"><a className="brand" href="/">orb<span>e</span></a></header>}

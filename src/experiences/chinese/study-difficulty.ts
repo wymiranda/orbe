@@ -5,7 +5,7 @@ export type StudySuggestion = { kind: 'difficulty'; difficulty: StudyDifficulty 
 export const studyDifficultyLabels: Record<StudyDifficulty, string> = { easy: 'Fácil', medium: 'Médio', hard: 'Difícil', brutal: 'Brutal' }
 const difficultyRank: Record<StudyDifficulty, number> = { easy: 0, medium: 1, hard: 2, brutal: 3 }
 
-/** Brutal is never a free choice: it is offered only once the learner has unlocked it (strong sessions on Difícil). */
+/** Brutal is never a free choice: it is offered only at an HSK level where the learner has unlocked it (10 Brutal rounds right there). */
 export function choosableDifficulties(brutalUnlocked: boolean): StudyDifficulty[] { return brutalUnlocked ? ['easy', 'medium', 'hard', 'brutal'] : ['easy', 'medium', 'hard'] }
 
 /** A difficulty includes every easier one: Médio plays Fácil and Médio sentences. */

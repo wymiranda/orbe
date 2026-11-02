@@ -828,8 +828,9 @@ input:focus, textarea:focus, select:focus { border-color: var(--ink); outline: 3
 
 /* ---------- End of session: new words fly to the wall of the level ---------- */
 
-.session-summary { display: grid; min-height: 100%; }
-.session-summary-content { align-content: start; display: grid; gap: 1.5rem; justify-items: center; margin: 0 auto; max-width: 64rem; padding: clamp(1.5rem, 4vw, 3rem) 1rem 3rem; text-align: center; width: 100%; }
+/* The summary fills the screen under the top bar (3.5rem) and its wall sits in the middle of it. */
+.session-summary { display: grid; min-height: calc(100svh - 3.5rem); }
+.session-summary-content { align-content: center; display: grid; gap: 1.5rem; justify-items: center; margin: 0 auto; max-width: 64rem; padding: clamp(1.5rem, 4vw, 3rem) 1rem 3rem; text-align: center; width: 100%; }
 .session-summary-content h1 { margin: 0; }
 .session-summary-cards { display: flex; flex-wrap: wrap; gap: clamp(.75rem, 2vw, 1.25rem); justify-content: center; list-style: none; margin: 0; padding: 0; perspective: 900px; }
 .session-summary-cards li { animation: session-card-flip .7s var(--ease) both; transform-origin: center; will-change: transform; }

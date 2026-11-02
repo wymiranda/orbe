@@ -12,16 +12,18 @@ export type WallWord = Pick<OverviewTerm, "id" | "hanzi" | "pinyin" | "portugues
 const flipStagger = 260;
 const flipDuration = 700;
 const pauseBeforeFlight = 900;
-const flightStagger = 320;
-const flightDuration = 900;
+const flightStagger = 420;
+const flightDuration = 1100;
+/** Before the wall turns, the last cards of a page finish landing and stay in view this long. */
+const pauseBeforePageSwitch = 1400;
 /** Time for the wall to slide to the page of the next card before it flies. */
-const pageSwitchDuration = 750;
-/** Words per wall page, roughly: a level splits into pages only when it is much larger (HSK 1 makes two). */
-const wallPageSize = 150;
+const pageSwitchDuration = 900;
+/** Most words on one wall page: a larger level splits into pages of the same size (HSK 1, about 300 words, makes two of 150). */
+const wallPageLimit = 200;
 
-/** The level's words split into pages of about the same size. */
+/** The level's words on as few pages as hold at most 200 each, all of about the same size. */
 function wallPages<T>(terms: T[]): T[][] {
-  const count = Math.max(1, Math.round(terms.length / wallPageSize));
+  const count = Math.max(1, Math.ceil(terms.length / wallPageLimit));
   const size = Math.ceil(terms.length / count);
   return Array.from({ length: count }, (_, page) => terms.slice(page * size, (page + 1) * size));
 }
@@ -100,6 +102,8 @@ export function NewWordsWall({ newWords, level, vocabulary }: { newWords: WallWo
       const wordPage = pageOf.get(word.id);
       if (wordPage !== undefined && wordPage !== currentPage) {
         currentPage = wordPage;
+        // The cards already sent finish their flight and are seen landing before the wall turns.
+        time += flightDuration - flightStagger + pauseBeforePageSwitch;
         timers.push(window.setTimeout(() => setPage(wordPage), time));
         time += pageSwitchDuration;
       }

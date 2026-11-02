@@ -385,6 +385,16 @@ code { background: var(--surface-2); border-radius: 0.25rem; color: var(--ink); 
 .focus-answer > p { color: var(--accent); font-size: 1.15rem; margin: 0; }
 .focus-answer h2 { color: var(--ink); font-size: clamp(1.5rem, 4vw, 2rem); margin: .5rem 0; }
 .focus-answer small { color: var(--ink); }
+/* How to use a grammar word: a short note and examples that can be heard. */
+.focus-explanation { background: var(--surface-2, var(--surface)); border: 1px solid var(--line); border-radius: .75rem; margin: 1rem auto 0; max-width: 32rem; padding: .85rem 1rem; text-align: left; }
+.focus-explanation p { color: var(--ink-2); font-size: .92rem; line-height: 1.5; margin: 0 0 .65rem; }
+.focus-explanation ul { display: grid; gap: .5rem; list-style: none; margin: 0; padding: 0; }
+.focus-explanation li { align-items: center; display: flex; gap: .65rem; }
+.focus-explanation li .focus-speak { flex: none; }
+.focus-explanation li span { display: grid; gap: .05rem; }
+.focus-explanation li strong { color: var(--ink); font-family: var(--font-han); font-size: 1.1rem; }
+.focus-explanation li small { color: var(--accent); font-size: .8rem; }
+.focus-explanation li em { color: var(--ink-2); font-size: .85rem; font-style: normal; }
 .focus-answer blockquote { border-left: 2px solid var(--line-strong); color: var(--ink); font-family: var(--font-han); line-height: 1.6; margin: 2rem auto; max-width: 30rem; padding-left: 1rem; text-align: left; }
 .focus-ratings { display: flex; flex-wrap: wrap; gap: .55rem; justify-content: center; margin-top: 2rem; }
 .focus-ratings button { font-size: .8rem; padding: .6rem .75rem; }
@@ -522,6 +532,8 @@ code { background: var(--surface-2); border-radius: 0.25rem; color: var(--ink); 
 .writing-session-settings button { font-size: .75rem; padding: .5rem; }
 .writing-next { font-size: 1.35rem; line-height: 1; min-width: 2.45rem; padding: .35rem .45rem; }
 .writing-session-content { margin: 0 auto; max-width: 42rem; padding: clamp(.75rem, 2.5vh, 1.75rem) 1rem; }
+/* The session card is fixed at the bottom: the writing actions must be reachable above it. */
+.workspace-layout:has(.session-orchestration-progress) .writing-session-content { padding-bottom: 7.5rem; }
 .writing-session-content .session-counter { color: var(--ink-2); font-size: .82rem; margin: 0 0 .55rem; text-align: center; }
 .writing-session .writing-canvas { width: min(100%, 26rem, calc(100svh - 20rem)); }
 .writing-session .guided-writer { min-height: 0; height: min(26rem, calc(100svh - 20rem)); }
@@ -577,11 +589,6 @@ code { background: var(--surface-2); border-radius: 0.25rem; color: var(--ink); 
   .scene-certa-grid { gap: .5rem; }
   .scene-certa-feedback { align-items: stretch; flex-direction: column; gap: .65rem; text-align: center; }
 }
-.writing-reference-card { align-items: center; background: var(--surface); border: 1px solid var(--line); border-radius: .75rem; display: flex; justify-content: center; margin: 1rem auto 0; max-width: 34rem; padding: .8rem 1rem; text-align: center; width: 100%; }
-.writing-reference-card > * { align-items: center; display: inline-flex; justify-content: center; min-height: 2rem; padding: 0 1rem; }
-.writing-reference-card > * + * { border-left: 1px solid var(--line); }
-.writing-reference-card strong { color: var(--ink); font-family: var(--font-han); font-size: 1.7rem; line-height: 1; }
-.writing-reference-card span { color: var(--ink-2); font-size: .88rem; }
 .guided-writer-pair { display: grid; gap: 1px; grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .guided-writer-pair .guided-writer { min-width: 0; width: 100%; }
 .guided-writer-preview { opacity: .7; }

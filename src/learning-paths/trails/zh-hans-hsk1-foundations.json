@@ -35,7 +35,7 @@
           "skill": "recognition",
           "mode": "introduce",
           "introduction": { "title": "Duas palavras novas.", "description": "Elas vão ampliar uma frase que você já conhece." },
-          "contentIds": ["想", "不"]
+          "contentIds": ["想", "不", "水"]
         }
       ]
     },
@@ -53,7 +53,7 @@
           "mode": "introduce",
           "anchor": { "hanzi": "我吃苹果。", "pinyin": "Wǒ chī píngguǒ.", "translation": "Eu como maçã." },
           "introduction": { "title": "Uma nova âncora.", "description": "Você já conhece eu; agora vai acrescentar comer e maçã." },
-          "contentIds": ["吃", "苹果"]
+          "contentIds": ["吃", "苹果", "他"]
         }
       ]
     }

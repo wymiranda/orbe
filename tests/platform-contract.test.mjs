@@ -245,6 +245,23 @@ test('a large outbox is sent in chunks the servers accept', async () => {
   assert.equal(Object.keys(store.load().studySync).length, 0)
 })
 
+test('a rating sets the next review only for a new or due card', async () => {
+  fakeWindow()
+  const { createProgressStore } = await importTs('src/modules/study/engine/progress-store.ts')
+  const store = createProgressStore({ storageKey: 'test-rating', changeEvent: 'test-rating' })
+  store.createCardsForVocabulary(store.load(), ['茶'])
+  const first = store.rateCard(store.load(), '茶', 'easy')
+  assert.equal(first.intervalDays, 4)
+  // Shown again before its review is due: "easy" does not stretch the interval.
+  const early = store.rateCard(store.load(), '茶', 'easy')
+  assert.equal(early.intervalDays, 4)
+  assert.equal(early.dueAt, first.dueAt)
+  const progress = store.load()
+  progress.cards[0].dueAt = new Date(Date.now() - 1_000).toISOString()
+  store.save(progress)
+  assert.ok(store.rateCard(store.load(), '茶', 'easy').intervalDays > 4)
+})
+
 test('offline mode caches only shared read-only content and the local access shell', async () => {
   const worker = await source('public/sw.js')
   const auth = await source('src/core/AuthGate.tsx')
@@ -454,6 +471,131 @@ test('words answered right less than 70% of the time come back for review, worst
     'zh-hans:sentence:我喝茶': { skills: { comprehension: skill(4, 0) }, mastered: false, updatedAt: 1 },
   } }
   assert.deepEqual(plan.weakWords(snapshot), ['茶', '水'])
+})
+
+test('a weak word is reviewed only while it still needs it, the weakest first', async () => {
+  const plan = await importTs('src/experiences/chinese/session-plan.ts')
+  const skill = (attempts, successes, strength, dueAt = 0) => ({ attempts, successes, hints: 0, strength, dueAt, updatedAt: 0 })
+  const word = (value) => ({ skills: { recognition: value }, mastered: false, updatedAt: 1 })
+  const snapshot = { version: 1, updatedAt: 0, contents: {
+    '茶': word(skill(4, 1, 40)),
+    '水': word(skill(4, 1, 10)),
+    '书': word(skill(5, 2, 70)),
+    '看': word(skill(4, 1, 20, 2_000)),
+    '喝': word(skill(4, 1, 5)),
+  } }
+  // 书 has recovered (answered right lately), 看 is not due yet, 喝 waits its flashcard interval.
+  assert.deepEqual(plan.weakWords(snapshot, { now: 1_000, scheduledLater: (id) => id === '喝' }), ['水', '茶'])
+})
+
+test('session games play the sentences with the new words of the session first', async () => {
+  const plan = await importTs('src/experiences/chinese/session-plan.ts')
+  const sentences = [{ id: 'tea', tokens: ['我', '喝', '茶'] }, { id: 'water', tokens: ['我', '喝', '水'] }, { id: 'apple', tokens: ['我', '吃', '苹果'] }, { id: 'she', tokens: ['她', '想', '喝', '水'] }]
+  const ordered = plan.focusFirst(sentences, ['水', '她']).map((sentence) => sentence.id)
+  assert.deepEqual(ordered.slice(0, 2).sort(), ['she', 'water'])
+  assert.deepEqual(ordered.slice(2).sort(), ['apple', 'tea'])
+})
+
+test('the session review takes on overdue flashcards, more only in a catch-up session', async () => {
+  const plan = await importTs('src/experiences/chinese/session-plan.ts')
+  const card = (id, day, ease = 2.5, isNew = false) => ({ vocabularyId: id, dueAt: `2026-01-${String(day).padStart(2, '0')}T00:00:00.000Z`, isNew, ease })
+  const now = '2026-02-01T00:00:00.000Z'
+  const many = (count, ease) => Array.from({ length: count }, (_, index) => card(`w${index}`, (index % 28) + 1, ease))
+  // Nothing overdue: nothing added (new cards and the session's own words do not count).
+  assert.deepEqual(plan.overdueReview([card('茶', 1), card('新', 1, 2.5, true), { ...card('明', 1), dueAt: '2026-03-01T00:00:00.000Z' }], { now, exclude: ['茶'] }).ids, [])
+  // A few overdue: all of them, the most overdue first.
+  assert.deepEqual(plan.overdueReview([card('b', 9), card('a', 2)], { now }).ids, ['a', 'b'])
+  assert.equal(plan.overdueReview(many(25), { now, catchUpTurn: true }).ids.length, 10)
+  assert.equal(plan.overdueReview(many(40), { now, catchUpTurn: false }).ids.length, 10)
+  assert.equal(plan.overdueReview(many(40), { now, catchUpTurn: true }).ids.length, 20)
+  // Cards the learner keeps marking hard pile up again: no catch-up for them.
+  assert.equal(plan.overdueReview(many(40, 1.5), { now, catchUpTurn: true }).ids.length, 10)
+  const store = new Map()
+  const storage = { getItem: (key) => store.get(key) ?? null, setItem: (key, value) => store.set(key, value) }
+  const turns = Array.from({ length: 5 }, () => { const turn = plan.reviewCatchUpTurn(storage); turn.record(turn.due); return turn.due })
+  assert.deepEqual(turns, [true, false, false, true, false])
+})
+
+test('a word used right in a sentence game counts as the review of its overdue flashcard', async () => {
+  const plan = await importTs('src/experiences/chinese/session-plan.ts')
+  const now = '2026-02-01T00:00:00.000Z'
+  const cards = [{ vocabularyId: '喜欢', dueAt: '2026-01-01T00:00:00.000Z', isNew: false }, { vocabularyId: '茶', dueAt: '2026-03-01T00:00:00.000Z', isNew: false }, { vocabularyId: '我', dueAt: '2026-01-01T00:00:00.000Z', isNew: false }]
+  const result = { moduleId: 'multiplayer', assessments: [{ contentId: '我', correct: false }, { contentId: '喜欢', correct: true }, { contentId: '茶', correct: true }] }
+  assert.deepEqual(plan.wordsReviewedBySentences(result, cards, now), ['喜欢'])
+  assert.deepEqual(plan.wordsReviewedBySentences({ ...result, moduleId: 'study' }, cards, now), [])
+})
+
+test('after the starter core, new words come at a pace that follows the learner', async () => {
+  const plan = await importTs('src/experiences/chinese/session-plan.ts')
+  const base = { starterLeft: 0, weakCount: 0, lastNewWords: 3, lastWordsFragile: false, freshSentences: 0, knownWords: 30 }
+  // While the starter core is being learned: always 3.
+  assert.deepEqual(plan.sessionPace({ ...base, starterLeft: 4, weakCount: 5, lastWordsFragile: true }), { newWords: 3, focus: null })
+  // Fewer words the more sentences are waiting to be practised, at most 2 from 60 words on.
+  assert.equal(plan.sessionPace({ ...base, freshSentences: 2 }).newWords, 3)
+  assert.equal(plan.sessionPace({ ...base, freshSentences: 7 }).newWords, 2)
+  assert.equal(plan.sessionPace({ ...base, freshSentences: 15 }).newWords, 1)
+  assert.equal(plan.sessionPace({ ...base, knownWords: 80 }).newWords, 2)
+  // Weak words, or the last session's words still fragile: a session on them, no new word.
+  assert.deepEqual(plan.sessionPace({ ...base, weakCount: 3 }), { newWords: 0, focus: 'weak' })
+  assert.deepEqual(plan.sessionPace({ ...base, lastWordsFragile: true }), { newWords: 0, focus: 'recent' })
+  // Never two sessions in a row without a new word.
+  assert.deepEqual(plan.sessionPace({ ...base, lastNewWords: 0, weakCount: 5, lastWordsFragile: true }), { newWords: 3, focus: null })
+  const skill = (strength) => ({ attempts: 2, successes: 2, hints: 0, strength, dueAt: 0, updatedAt: 0 })
+  const snapshot = { version: 1, updatedAt: 0, contents: { '水': { skills: { recognition: skill(70), production: skill(30) }, mastered: false, updatedAt: 1 }, '茶': { skills: { recognition: skill(80) }, mastered: false, updatedAt: 1 } } }
+  assert.equal(plan.fragileWord(snapshot, '水'), true)
+  assert.equal(plan.fragileWord(snapshot, '茶'), false)
+})
+
+test('grammar words come with an explanation and examples on their card', async () => {
+  const { wordExplanations } = await importTs('src/experiences/chinese/word-explanations.ts')
+  const hsk1 = new Set((await source('files/vocabulario hsk/hsk1.txt')).split(/\r?\n/).slice(1).map((line) => line.split(',')[0]).filter(Boolean))
+  for (const [word, explanation] of Object.entries(wordExplanations)) {
+    assert.ok(hsk1.has(word), `${word} is an HSK 1 word`)
+    assert.ok(explanation.text.length > 20, `${word} has an explanation`)
+    assert.ok(explanation.examples.length >= 2 && explanation.examples.every((example) => example.text.includes(word.replace('哪儿', '哪')) && example.reading && example.meaning), `${word} has examples that use it`)
+  }
+  for (const word of ['吗', '在', '了', '的', '不', '个']) assert.ok(wordExplanations[word], `${word} is explained`)
+  assert.match(await source('src/experiences/chinese/flashcard-source.tsx'), /explanation: wordExplanations\[item\.hanzi\]/)
+})
+
+test('right after the trail the starter core is taught in its order', async () => {
+  const plan = await importTs('src/experiences/chinese/session-plan.ts')
+  const vocabulary = ['我', '喝', '茶', '想', '不', '水', '吃', '苹果', '他', '你', '吗', '她', '喜欢', '书'].map((id) => ({ id, hsk_level: '1' }))
+  const trail = ['我', '喝', '茶', '想', '不', '水', '吃', '苹果', '他']
+  assert.deepEqual(plan.nextWordsToLearn({ vocabulary, sentences: [], level: 1, studied: (id) => trail.includes(id) }), ['你', '吗', '她'])
+  assert.deepEqual(plan.nextWordsToLearn({ vocabulary, sentences: [], level: 1, studied: (id) => [...trail, '你'].includes(id) }), ['吗', '她', '喜欢'])
+})
+
+test('review-only sessions wait for nine known words', async () => {
+  const plan = await importTs('src/experiences/chinese/session-plan.ts')
+  const store = new Map([['niorb:chinese:practice-cadence:v1', '3']])
+  const storage = { getItem: (key) => store.get(key) ?? null, setItem: (key, value) => store.set(key, value) }
+  assert.equal(plan.nextSessionKind(12, storage, 8), 'regular')
+  assert.equal(plan.nextSessionKind(12, storage, 9), 'practice')
+})
+
+test('sentences played lately go after the others, new words still first', async () => {
+  const plan = await importTs('src/experiences/chinese/session-plan.ts')
+  const sentences = [{ id: 'a', tokens: ['我', '喝', '茶'] }, { id: 'b', tokens: ['我', '吃', '苹果'] }, { id: 'c', tokens: ['我', '喝', '水'] }, { id: 'd', tokens: ['他', '喝', '水'] }]
+  assert.deepEqual(plan.focusFirst(sentences, ['他'], () => 0.5, ['a', 'd']).map((sentence) => sentence.id), ['d', 'b', 'c', 'a'])
+  const store = new Map()
+  const storage = { getItem: (key) => store.get(key) ?? null, setItem: (key, value) => store.set(key, value) }
+  plan.rememberSessionSentences(['a', 'b'], storage); plan.rememberSessionSentences(['a'], storage)
+  assert.deepEqual(plan.recentSessionSentences(storage), ['b', 'a'])
+})
+
+test('after the trail, new words are the ones that complete the most sentences', async () => {
+  const plan = await importTs('src/experiences/chinese/session-plan.ts')
+  const vocabulary = ['书', '我', '水', '看', '喝', '飞机'].map((id) => ({ id, hsk_level: '1' })).concat({ id: '咖啡', hsk_level: '2' })
+  const sentences = [
+    { tokens: ['我', '喝', '水', '。'], level: '1', difficulty: 'easy' },
+    { tokens: ['我', '看', '书', '。'], level: '1', difficulty: 'easy' },
+    { tokens: ['我', '喝', '咖啡', '。'], level: '2', difficulty: 'easy' },
+  ]
+  const studied = (id) => ['我', '喝'].includes(id)
+  // 水 completes a sentence; 看 and 书 each appear once; 咖啡 is above the level; 飞机 is in no sentence.
+  assert.deepEqual(plan.nextWordsToLearn({ vocabulary, sentences, level: 1, studied, limit: 3 }), ['水', '书', '看'])
+  assert.deepEqual(plan.nextWordsToLearn({ vocabulary, sentences, level: 1, studied, limit: 5 }), ['水', '书', '看', '飞机'])
 })
 
 test('one session in four is practice once ten sentences can be built', async () => {
