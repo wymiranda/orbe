@@ -1,10 +1,10 @@
-# Orbe
+# Niorb
 
 Uma plataforma de conteúdo compartilhado com experiências de estudo pessoais.
 
 ## Direção da plataforma
 
-O Orbe é um núcleo pessoal composto por módulos habilitáveis. Ele começa com Leituras, mas deve poder reunir áreas independentes, como Finanças, Tarefas e Idiomas, sem transformar tudo em uma aplicação acoplada.
+O Niorb é um núcleo pessoal composto por módulos habilitáveis. Ele começa com Leituras, mas deve poder reunir áreas independentes, como Finanças, Tarefas e Idiomas, sem transformar tudo em uma aplicação acoplada.
 
 ### Princípios de desenvolvimento
 
@@ -13,17 +13,18 @@ O Orbe é um núcleo pessoal composto por módulos habilitáveis. Ele começa co
 - A comunicação entre Core e módulo, ou entre módulos, ocorre por contratos explícitos de API e tipos — nunca por dependência implícita do banco de dados.
 - Um módulo novo deve nascer isolado em `src/modules/<modulo>` e `worker/modules/<modulo>`, mesmo enquanto o app usa um único deploy e um único D1.
 - A implementação inicial é um monólito modular: simples para desenvolver e publicar, mas com fronteiras que permitam extrair um módulo para outro Worker, domínio ou banco quando isso fizer sentido.
-- Um módulo deve poder virar um app independente reutilizando suas regras e contrato público, sem precisar carregar ou conhecer os demais módulos do Orbe.
+- Um módulo deve poder virar um app independente reutilizando suas regras e contrato público, sem precisar carregar ou conhecer os demais módulos do Niorb.
 - Habilitar ou desabilitar um módulo altera a experiência e a navegação, não apaga seus dados. Quando houver contas, essa escolha será uma preferência persistida por usuário.
 - Não antecipar infraestrutura complexa. Uma abstração só entra quando houver um segundo caso real que a justifique, preservando clareza e autonomia dos módulos.
 - Conteúdo publicado (leituras, catálogo e decks) pertence à plataforma. Progresso pessoal (cards, revisões, vocabulário conhecido e ponto de leitura) pertence ao dispositivo do usuário e não vai para o servidor sem uma decisão explícita de sincronização.
+- Listagens navegáveis devem ter filtro apropriado ao conteúdo e paginação. A paginação é obrigatória quando a coleção pode crescer; filtros devem atualizar a primeira página e a busca textual deve desconsiderar acentos quando isso fizer sentido para o idioma.
 
 ### Macro-módulos e experiências compostas
 
-Além dos módulos independentes, o Orbe pode oferecer macro-módulos: experiências que compõem capacidades existentes, conectam seus fluxos e adicionam regras e configurações próprias. Um macro-módulo não reimplementa nem passa a ser dono dos módulos que utiliza.
+Além dos módulos independentes, o Niorb pode oferecer macro-módulos: experiências que compõem capacidades existentes, conectam seus fluxos e adicionam regras e configurações próprias. Um macro-módulo não reimplementa nem passa a ser dono dos módulos que utiliza.
 
 ```text
-Orbe
+Niorb
 ├── Leituras
 ├── Flashcards
 ├── Escrita
@@ -39,9 +40,11 @@ Por exemplo, o macro-módulo Chinês pode abrir uma leitura, reconhecer um termo
 
 Essa composição ocorre por contratos explícitos: cada módulo base expõe capacidades e o macro-módulo as orquestra. O macro não acessa tabelas ou componentes internos dos módulos que usa. Dados e regras específicos do Chinês, como catálogo, segmentação, pinyin e preferências, permanecem sob o domínio Chinês. A abstração só deve ser criada quando houver um segundo uso real que a justifique.
 
-O front principal também pertence à experiência, e não aos módulos base: o usuário abre um workspace, que oferece sua própria navegação e reúne as capacidades necessárias. Módulos podem fornecer telas reutilizáveis, mas não precisam aparecer como destinos globais da navegação. Isso permite que Leituras e Flashcards sejam reaproveitados por outra experiência sem que a interface do Orbe passe a parecer uma coleção de ferramentas soltas.
+O front principal também pertence à experiência, e não aos módulos base: o usuário abre um workspace, que oferece sua própria navegação e reúne as capacidades necessárias. Módulos podem fornecer telas reutilizáveis, mas não precisam aparecer como destinos globais da navegação. Isso permite que Leituras e Flashcards sejam reaproveitados por outra experiência sem que a interface do Niorb passe a parecer uma coleção de ferramentas soltas.
 
 ## Desenvolvimento
+
+Documentação dos motores e contratos fica em [`docs/`](docs/). O contrato do motor de Quiz está em [`docs/engines/quiz.md`](docs/engines/quiz.md) e o do jogo Ouça e monte em [`docs/engines/listen-build.md`](docs/engines/listen-build.md).
 
 ```bash
 npm install
@@ -55,18 +58,23 @@ O app abre localmente no endereço mostrado pelo Vite. A rota `GET /api/health` 
 ```bash
 npm run build
 npm run lint
+npm test
 npm run deploy
 ```
 
 ## Banco de dados
 
-O Cloudflare D1 guarda somente autenticação e conteúdo compartilhado: leituras, capítulos, catálogo chinês e decks publicados. O progresso de estudo fica em `localStorage` no dispositivo. O desenvolvimento usa uma cópia local persistente; a publicação usa o banco remoto `orbe`.
+O D1 `niorb` guarda somente identidade e sessões. Cada workspace tem seu próprio banco: `niorb-chinese` para Chinês e `niorb-english` para Inglês. O progresso de estudo fica em `localStorage` no dispositivo, salvo quando um workspace optar explicitamente por sincronizá-lo.
 
 ```bash
 npm run db:migrate:local
 npm run db:migrate:remote
+npm run db:chinese:migrate:local
+npm run db:chinese:migrate:remote
+npm run db:english:migrate:local
+npm run db:english:migrate:remote
 ```
 
-As mudanças de estrutura do banco ficam em `migrations/`. O projeto está em um reset inicial e possui somente `0001_create_platform.sql`; depois que ela for aplicada em produção, novas mudanças devem usar uma nova migration numerada, sem editar a `0001`.
+As mudanças de estrutura ficam em `migrations/` (plataforma), `migrations-chinese/` e `migrations-english/` (um diretório por banco de workspace). Uma migration já aplicada em produção nunca é editada: cada mudança entra como uma nova migration numerada no diretório do banco correspondente.
 
 R2 entrará somente quando o app aceitar arquivos como PDFs, EPUBs ou imagens.

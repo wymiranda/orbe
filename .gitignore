@@ -25,6 +25,7 @@ dist-ssr
 
 # wrangler files
 .wrangler
+.d1-schema-validation/
 .dev.vars*
 !.dev.vars.example
 .env*
@@ -33,3 +34,7 @@ dist-ssr
 # Local operating instructions. Never commit or deploy these files.
 AGENTS.md
 agents.md
+
+# Local database dumps and manual snapshots (may contain user data)
+backups/
+*.sql.gz

@@ -1,3 +1,17 @@
-# Copie este arquivo como .dev.vars para executar o login local.
-# Nunca envie o PIN real ao Git.
-BETA_ACCESS_PIN="defina-um-pin-beta-forte"
+# Create a Google OAuth client of type "Web application".
+# With `npm run dev`, authorize http://localhost:5173/api/auth/google/callback.
+GOOGLE_CLIENT_ID="your-client-id.apps.googleusercontent.com"
+GOOGLE_CLIENT_SECRET="your-client-secret"
+# Optional comma-separated allow-list. Omit it to allow every verified Google account.
+GOOGLE_ALLOWED_EMAILS="you@example.com"
+
+# Temporary credential login for one invited person. Do not commit real values.
+TEMP_LOGIN_EMAIL="friend@example.com"
+TEMP_LOGIN_PASSWORD="choose-a-temporary-password"
+
+# Brevo transactional e-mail. Keep real values only in .dev.vars locally and
+# use Worker secrets in production; never put these values in wrangler.jsonc.
+BREVO_API_KEY="xkeysib-your-brevo-api-key"
+EMAIL_FROM="contato@example.com"
+EMAIL_SENDER_NAME="Niorb"
+EMAIL_REPLY_TO="contato@example.com"

@@ -1,0 +1,163 @@
+Título da leitura
+雨后有太阳 — O Sol Depois da Chuva
+Categoria ou tema
+故事 — História
+Tags
+- HSK一级 — HSK1
+- 动物 — Animais
+- 天气 — Clima
+- 朋友 — Amigos
+- 家 — Lar
+- 爱 — Amor
+Títulos dos capítulos
+Capítulo	Chinês simplificado	Português
+1	最后一个晴天	O último dia de sol
+2	没有猫的家	A casa vazia
+3	很长的一夜	A noite mais longa
+4	那边	Do outro lado
+5	雨后	Depois da chuva
+
+
+above: Māma zài jiā zuò zǎofàn, zuò bāozi.
+text: 妈妈在家做早饭，做包子。
+below: A mamãe está em casa fazendo o café da manhã, fazendo bāozi.
+
+above: Rìchū, bàba qǐchuáng le, tā cóng fángjiān chūlái, zài diànshì shàng kàn diànyǐng.
+text: 日出，爸爸起床了，他从房间出来，在电视上看电影。
+below: Ao nascer do sol, o papai se levantou, saiu do quarto e ficou vendo filme na TV.
+
+above: Jīntiān Xīngqīrì.
+text: 今天星期日。
+below: Hoje é domingo.
+
+above: Shàngwǔ, tiānqì hěn hǎo, hěn rè.
+text: 上午，天气很好，很热。
+below: De manhã, o tempo está muito bom, está quente.
+
+above: Tāmen zhù zài Zhōngguó de yīgè xiǎo chéngshì.
+text: 他们住在中国的一个小城市。
+below: Eles moram numa pequena cidade na China.
+
+above: Fángjiān lǐ yǒu yīgè zhuōzi, liǎng gè yǐzi hé yīgè diànshì.
+text: 房间里有一个桌子，两个椅子和一个电视。
+below: No quarto há uma mesa, duas cadeiras e uma televisão.
+
+above: Zhuōzi xià yǒu liǎng gè bēizi.
+text: 桌子下有两个杯子。
+below: Embaixo da mesa há dois copos.
+
+above: Yīgè bēizi lǐ yǒu niúnǎi, yīgè bēizi lǐ yǒu shuǐ.
+text: 一个杯子里有牛奶，一个杯子里有水。
+below: Um copo tem leite, e o outro copo tem água.
+
+above: Māo hē le yīdiǎnr niúnǎi, shuō: "Wǒ qù wàibiān wán."
+text: 猫喝了一点儿牛奶，说：“我去外边玩。”
+below: O gato bebeu um pouco de leite e disse: "Vou lá fora brincar."
+
+above: Gǒu shuō: "Hǎo. Nǐ huí jiā chī wǔfàn ma?"
+text: 狗说：“好。你回家吃午饭吗？”
+below: O cachorro disse: "Está bem. Você volta para casa para almoçar?"
+
+above: Māo shuō: "Gǒu, wǒ bù shì nǐ de péngyou."
+text: 猫说：“狗，我不是你的朋友。”
+below: O gato diz: "Cachorro, eu não sou seu amigo."
+
+above: Māo qù wàibiān le.
+text: 猫去外边了。
+below: O gato foi lá para fora.
+
+above: Māma shuō: "Dàjiā lái chī bāozi, hěn hǎochī!"
+text: 妈妈说：“大家来吃包子，很好吃！”
+below: A mamãe diz: "Todos venham comer bāozi, está muito gostoso!"
+
+above: Bàba chī le bā gè bāozi hé bàn gè píngguǒ.
+text: 爸爸吃了八个包子和半个苹果。
+below: O papai comeu oito bāozi e meia maçã.
+
+above: Māma hē le chá, chī le yīgè miànbāo.
+text: 妈妈喝了茶，吃了一个面包。
+below: A mamãe bebeu chá e comeu um pão.
+
+above: Gǒu chī le wǔ gè bāozi hé liǎng gè jīdàn.
+text: 狗吃了五个包子和两个鸡蛋。
+below: O cachorro comeu cinco bāozi e dois ovos.
+
+above: Bàba shuō: "Wǒ fēicháng xǐhuan zhèxiē bāozi."
+text: 爸爸说：“我非常喜欢这些包子。”
+below: O papai diz: "Eu gostei muito destes bāozi."
+
+above: Zhōngwǔ, māo méiyǒu huí jiā.
+text: 中午，猫没有回家。
+below: Ao meio-dia, o gato não voltou para casa.
+
+above: Gǒu méiyǒu chī wǔfàn.
+text: 狗没有吃午饭。
+below: O cachorro não almoçou.
+
+above: Gǒu kàn zhuōzi shàng de bēizi.
+text: 狗看桌子上的杯子。
+below: O cachorro olha o copo sobre a mesa.
+
+above: Gǒu qù wàibiān děng nǐ de péngyou.
+text: 狗去外边等你的朋友。
+below: O cachorro foi lá para fora esperar seu amigo.
+
+above: Nàge bēizi lǐ hái shì yǒu niúnǎi.
+text: 那个杯子里还是有牛奶。
+below: Aquele copo ainda tem leite.
+
+above: Xiàwǔ, xiàyǔ le.
+text: 下午，下雨了。
+below: À tarde, começou a chover.
+
+above: Yǔ hěn dà, tiānqì hěn lěng.
+text: 雨很大，天气很冷。
+below: A chuva está forte, e o tempo está muito frio.
+
+above: Gǒu zài fángjiān lǐ.
+text: 狗在房间里。
+below: O cachorro está no quarto.
+
+above: Tā kàn wàibiān.
+text: 他看外边。
+below: Ele olha lá para fora.
+
+above: Wàibiān méiyǒu māo.
+text: 外边没有猫。
+below: Lá fora não há gato.
+
+above: Tàiyáng yǐjīng xiàshān le, yuèliang chūlái le.
+text: 太阳已经下山了，月亮出来了。
+below: O sol já se pôs, a lua apareceu.
+
+above: Wǎnshang, māo hái méiyǒu huí jiā.
+text: 晚上，猫还没有回家。
+below: À noite, o gato ainda não voltou para casa.
+
+above: Gǒu bù gāoxìng.
+text: 狗不高兴。
+below: O cachorro está triste.
+
+above: Gǒu méiyǒu chī wǎnfàn, yě méiyǒu hē niúnǎi.
+text: 狗没有吃晚饭，也没有喝牛奶。
+below: O cachorro não jantou, nem bebeu leite.
+
+above: Bàba shuō: "Zhège gǒu zěnme le?"
+text: 爸爸说：“这个狗怎么了？”
+below: O papai diz: "O que houve com este cachorro?"
+
+above: Tā hái zài wàibiān děng.
+text: 他还在外边等。
+below: Ele ainda está lá fora esperando.
+
+above: Māma shuō: "Gǒu, qǐng lái!"
+text: 妈妈说：“狗，请来！”
+below: A mamãe diz: "Cachorro, por favor vem!"
+
+above: Shí diǎn, gǒu shuì le.
+text: 十点，狗睡了。
+below: Às dez horas, o cachorro dormiu.
+
+above: Māo zài nǎr ne?
+text: 猫在哪儿呢？
+below: Onde está o gato?

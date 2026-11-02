@@ -1,5 +1,5 @@
 {
-  "name": "orbe",
+  "name": "niorb",
   "private": true,
   "version": "0.0.0",
   "type": "module",
@@ -12,21 +12,28 @@
     "deploy": "npm run build && wrangler deploy",
     "cf-typegen": "wrangler types",
     "db:migrate:local": "wrangler d1 migrations apply DB --local",
-    "db:migrate:remote": "wrangler d1 migrations apply DB --remote"
+    "db:migrate:remote": "wrangler d1 migrations apply DB --remote",
+    "db:chinese:migrate:local": "wrangler d1 migrations apply CHINESE_DB --local",
+    "db:chinese:migrate:remote": "wrangler d1 migrations apply CHINESE_DB --remote",
+    "db:english:migrate:local": "wrangler d1 migrations apply ENGLISH_DB --local",
+    "db:english:migrate:remote": "wrangler d1 migrations apply ENGLISH_DB --remote"
   },
   "dependencies": {
     "hanzi-writer": "^3.7.3",
+    "lucide-react": "^1.59.0",
     "react": "^19.2.8",
     "react-dom": "^19.2.8"
   },
   "devDependencies": {
     "@cloudflare/vite-plugin": "^1.64.0",
     "@cloudflare/workers-types": "^5.20261014.1",
+    "@tailwindcss/vite": "^4.3.3",
     "@types/node": "^24.19.2",
     "@types/react": "^19.2.18",
     "@types/react-dom": "^19.2.7",
     "@vitejs/plugin-react": "^6.1.1",
     "oxlint": "^1.81.0",
+    "tailwindcss": "^4.3.3",
     "typescript": "~6.0.2",
     "vite": "^8.3.0",
     "wrangler": "^4.151.0"

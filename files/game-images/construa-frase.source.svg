@@ -1,0 +1,75 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <defs>
+    <radialGradient id="glow" cx="50%" cy="42%" r="72%">
+      <stop offset="0" stop-color="#d9493e"/>
+      <stop offset="1" stop-color="#ab2b22"/>
+    </radialGradient>
+    <filter id="shadow" x="-30%" y="-30%" width="160%" height="170%">
+      <feDropShadow dx="0" dy="16" stdDeviation="16" flood-color="#5a120d" flood-opacity=".38"/>
+    </filter>
+    <filter id="soft" x="-30%" y="-30%" width="160%" height="170%">
+      <feDropShadow dx="0" dy="6" stdDeviation="7" flood-color="#5a120d" flood-opacity=".22"/>
+    </filter>
+    <style>
+      .han { font-family: "Noto Serif SC", "Source Han Serif SC", "SimSun", "Songti SC", serif; font-weight: 700; text-anchor: middle; dominant-baseline: central; }
+      .pin { font-family: "Segoe UI", "Helvetica Neue", Arial, sans-serif; font-weight: 600; text-anchor: middle; dominant-baseline: central; letter-spacing: .02em; }
+    </style>
+  </defs>
+
+  <rect width="1024" height="1024" fill="url(#glow)"/>
+  <text class="han" x="512" y="470" font-size="800" fill="#ffffff" fill-opacity=".055">句</text>
+  <g fill="#f3c46b" fill-opacity=".9">
+    <circle cx="150" cy="170" r="9"/><circle cx="905" cy="560" r="7"/><circle cx="110" cy="900" r="7"/>
+    <rect x="300" y="140" width="15" height="15" rx="3" transform="rotate(-20 307 147)"/>
+  </g>
+  <g fill="#ffffff" fill-opacity=".45">
+    <circle cx="520" cy="110" r="6"/><circle cx="230" cy="330" r="5"/><circle cx="935" cy="920" r="5"/>
+  </g>
+
+  <g transform="translate(0 34)">
+  <!-- sentence board -->
+  <rect x="64" y="452" width="896" height="300" rx="56" fill="#ead9b9" filter="url(#shadow)"/>
+  <rect x="64" y="452" width="896" height="272" rx="56" fill="#fbf3e4"/>
+
+  <!-- placed tiles -->
+  <g filter="url(#soft)">
+    <rect x="100" y="484" width="246" height="232" rx="34" fill="#e3d2b1"/>
+    <rect x="100" y="484" width="246" height="210" rx="34" fill="#ffffff"/>
+    <rect x="389" y="484" width="246" height="232" rx="34" fill="#e3d2b1"/>
+    <rect x="389" y="484" width="246" height="210" rx="34" fill="#ffffff"/>
+  </g>
+  <text class="han" x="223" y="574" font-size="138" fill="#1d1c1a">我</text>
+  <text class="pin" x="223" y="664" font-size="30" fill="#b7832f">wǒ</text>
+  <text class="han" x="512" y="574" font-size="138" fill="#1d1c1a">喝</text>
+  <text class="pin" x="512" y="664" font-size="30" fill="#b7832f">hē</text>
+
+  <!-- empty slot -->
+  <rect x="680" y="486" width="242" height="206" rx="34" fill="#f5e8cf" stroke="#cfa964" stroke-width="7" stroke-dasharray="22 16"/>
+
+  <!-- second player's cursor resting on 喝 -->
+  <g transform="translate(590 640)" filter="url(#soft)">
+    <path d="M0 0 L0 74 L19 56 L33 86 L47 79 L33 50 L59 50 Z" fill="#3563a8" stroke="#ffffff" stroke-width="7" stroke-linejoin="round"/>
+  </g>
+
+  <!-- path of the tile being placed -->
+  <path d="M 818 392 C 852 420, 842 452, 812 486" fill="none" stroke="#ffffff" stroke-opacity=".8" stroke-width="8" stroke-linecap="round" stroke-dasharray="2 20"/>
+
+  <!-- tile on its way: 茶, held by the first player's cursor -->
+  <g transform="rotate(10 760 245)" filter="url(#shadow)">
+    <rect x="636" y="120" width="250" height="250" rx="36" fill="#d29b3e"/>
+    <rect x="636" y="120" width="250" height="226" rx="36" fill="#f6cf7f"/>
+    <text class="han" x="761" y="212" font-size="138" fill="#7a3a12">茶</text>
+    <text class="pin" x="761" y="302" font-size="30" fill="#9b5a1c">chá</text>
+  </g>
+  <g transform="translate(640 300)" filter="url(#soft)">
+    <path d="M0 0 L0 74 L19 56 L33 86 L47 79 L33 50 L59 50 Z" fill="#1d1c1a" stroke="#ffffff" stroke-width="7" stroke-linejoin="round"/>
+  </g>
+
+  <!-- progress of the sentence: 2 of 3 -->
+  <g>
+    <rect x="392" y="842" width="64" height="16" rx="8" fill="#fbf3e4"/>
+    <rect x="480" y="842" width="64" height="16" rx="8" fill="#fbf3e4"/>
+    <rect x="568" y="842" width="64" height="16" rx="8" fill="#ffffff" fill-opacity=".28"/>
+  </g>
+  </g>
+</svg>

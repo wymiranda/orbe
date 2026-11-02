@@ -1,12 +1,12 @@
 {
-  "name": "Orbe",
-  "short_name": "Orbe",
+  "name": "Niorb",
+  "short_name": "Niorb",
   "description": "Seu espaço pessoal para leituras e estudo.",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#f7f4ec",
-  "theme_color": "#1d2820",
+  "background_color": "#f7f6f3",
+  "theme_color": "#f7f6f3",
   "icons": [
-    { "src": "/orbe-icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+    { "src": "/niorb-icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
   ]
 }

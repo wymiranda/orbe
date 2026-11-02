@@ -6,7 +6,7 @@ function isIos() {
   return /iphone|ipad|ipod/i.test(navigator.userAgent)
 }
 
-function InstallOrbeButton() {
+function InstallNiorbButton() {
   const [promptEvent, setPromptEvent] = useState<InstallPromptEvent | null>(null)
   const [showIosHelp, setShowIosHelp] = useState(false)
   const [installed, setInstalled] = useState(false)
@@ -31,7 +31,7 @@ function InstallOrbeButton() {
   const ios = isIos()
 
   if (installed || window.matchMedia('(display-mode: standalone)').matches || (!ios && !promptEvent)) return null
-  return <div className="install-orbe"><button type="button" className="secondary" onClick={() => void install()}>Instalar Orbe</button>{showIosHelp && <p>No Safari, toque em <strong>Compartilhar</strong> e depois em <strong>Adicionar à Tela de Início</strong>.</p>}</div>
+  return <div className="install-niorb"><button type="button" className="secondary" onClick={() => void install()}>Instalar Niorb</button>{showIosHelp && <p>No Safari, toque em <strong>Compartilhar</strong> e depois em <strong>Adicionar à Tela de Início</strong>.</p>}</div>
 }
 
-export default InstallOrbeButton
+export default InstallNiorbButton

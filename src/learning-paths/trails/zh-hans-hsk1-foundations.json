@@ -1,0 +1,61 @@
+{
+  "id": "zh-hans-hsk1-foundations",
+  "version": 4,
+  "language": "zh-Hans",
+  "level": "HSK 1",
+  "objective": "Construir frases cotidianas em mandarim, ampliando uma âncora por vez.",
+  "units": [
+    {
+      "id": "first-anchor",
+      "title": "Primeira frase",
+      "activities": [
+        {
+          "id": "introduce-i-drink-tea",
+          "language": "zh-Hans",
+          "moduleId": "study",
+          "objective": "Conhecer sua primeira frase completa.",
+          "skill": "recognition",
+          "mode": "introduce",
+          "anchor": { "hanzi": "我喝茶。", "pinyin": "Wǒ hē chá.", "translation": "Eu bebo chá." },
+          "introduction": { "title": "Vamos abrir a frase em partes.", "description": "Agora você vai praticar as três palavras que acabou de ver juntas." },
+          "contentIds": ["我", "喝", "茶"]
+        }
+      ]
+    },
+    {
+      "id": "expand-first-anchor",
+      "title": "Querer e negar",
+      "prerequisites": ["我", "喝", "茶"],
+      "activities": [
+        {
+          "id": "introduce-want-and-not",
+          "language": "zh-Hans",
+          "moduleId": "study",
+          "objective": "Ampliar a primeira frase com querer e não.",
+          "skill": "recognition",
+          "mode": "introduce",
+          "introduction": { "title": "Duas palavras novas.", "description": "Elas vão ampliar uma frase que você já conhece." },
+          "contentIds": ["想", "不"]
+        }
+      ]
+    },
+    {
+      "id": "second-anchor",
+      "title": "Segunda frase",
+      "prerequisites": ["想", "不"],
+      "activities": [
+        {
+          "id": "introduce-i-eat-apple",
+          "language": "zh-Hans",
+          "moduleId": "study",
+          "objective": "Conhecer uma nova frase com duas palavras novas.",
+          "skill": "recognition",
+          "mode": "introduce",
+          "anchor": { "hanzi": "我吃苹果。", "pinyin": "Wǒ chī píngguǒ.", "translation": "Eu como maçã." },
+          "introduction": { "title": "Uma nova âncora.", "description": "Você já conhece eu; agora vai acrescentar comer e maçã." },
+          "contentIds": ["吃", "苹果"]
+        }
+      ]
+    }
+  ]
+}

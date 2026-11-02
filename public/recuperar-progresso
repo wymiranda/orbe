@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>niorb</title>
+  </head>
+  <body>
+    <main id="status" aria-live="polite">Recuperando seus dados…</main>
+    <script>
+      const canonicalOrigin = 'https://niorb.com'
+      const fragmentPrefix = '#niorb-recovery='
+      const status = document.getElementById('status')
+      const legacyPrefixes = ['niorb:', 'orbe:']
+
+      function setStatus(message) { status.textContent = message }
+
+      function bytesToBase64(bytes) {
+        let text = ''
+        for (const byte of bytes) text += String.fromCharCode(byte)
+        return btoa(text).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')
+      }
+
+      function base64ToBytes(value) {
+        const normalized = value.replace(/-/g, '+').replace(/_/g, '/') + '==='.slice((value.length + 3) % 4)
+        const text = atob(normalized)
+        return Uint8Array.from(text, (character) => character.charCodeAt(0))
+      }
+
+      async function pack(value) {
+        const data = new TextEncoder().encode(JSON.stringify(value))
+        if (!('CompressionStream' in window)) return `plain.${bytesToBase64(data)}`
+        const stream = new Blob([data]).stream().pipeThrough(new CompressionStream('gzip'))
+        return `gzip.${bytesToBase64(new Uint8Array(await new Response(stream).arrayBuffer()))}`
+      }
+
+      async function unpack(value) {
+        const [format, encoded] = value.split('.', 2)
+        const data = base64ToBytes(encoded)
+        if (format === 'plain') return JSON.parse(new TextDecoder().decode(data))
+        if (format !== 'gzip' || !('DecompressionStream' in window)) throw new Error('Formato de recuperação inválido.')
+        const stream = new Blob([data]).stream().pipeThrough(new DecompressionStream('gzip'))
+        return JSON.parse(await new Response(stream).text())
+      }
+
+      function localEntries() {
+        const entries = []
+        for (let index = 0; index < localStorage.length; index += 1) {
+          const key = localStorage.key(index)
+          if (!key || !legacyPrefixes.some((prefix) => key.startsWith(prefix)) || key === 'niorb:offline-user:v1') continue
+          const value = localStorage.getItem(key)
+          if (value !== null) entries.push([key, value])
+        }
+        return entries
+      }
+
+      function legacyKnowledge() {
+        return new Promise((resolve) => {
+          if (!('indexedDB' in window)) return resolve(null)
+          const request = indexedDB.open('niorb-learning', 1)
+          request.onsuccess = () => {
+            const database = request.result
+            if (!database.objectStoreNames.contains('knowledge')) { database.close(); return resolve(null) }
+            const get = database.transaction('knowledge', 'readonly').objectStore('knowledge').get('global')
+            get.onsuccess = () => { database.close(); resolve(get.result || null) }
+            get.onerror = () => { database.close(); resolve(null) }
+          }
+          request.onerror = () => resolve(null)
+        })
+      }
+
+      function canonicalKey(key) { return key.startsWith('orbe:') ? `niorb:${key.slice('orbe:'.length)}` : key }
+
+      function saveKnowledge(snapshot) {
+        return new Promise((resolve) => {
+          if (!snapshot || !('indexedDB' in window)) return resolve()
+          const request = indexedDB.open('niorb-learning', 1)
+          request.onupgradeneeded = () => request.result.createObjectStore('knowledge')
+          request.onsuccess = () => {
+            const database = request.result
+            const store = database.transaction('knowledge', 'readwrite').objectStore('knowledge')
+            const existing = store.get('global')
+            existing.onsuccess = () => {
+              if (!existing.result) store.put(snapshot, 'global')
+              database.close(); resolve()
+            }
+            existing.onerror = () => { database.close(); resolve() }
+          }
+          request.onerror = () => resolve()
+        })
+      }
+
+      async function exportLegacyData() {
+        const payload = { version: 1, entries: localEntries(), knowledge: await legacyKnowledge() }
+        if (!payload.entries.length && !payload.knowledge) { setStatus('Nenhum dado local foi encontrado neste endereço.'); return }
+        const packed = await pack(payload)
+        if (packed.length > 1500000) { setStatus('Há muitos dados para transferir automaticamente. Entre em contato com o suporte.'); return }
+        location.replace(`${canonicalOrigin}/recuperar-progresso${fragmentPrefix}${packed}`)
+      }
+
+      async function importCanonicalData() {
+        const packed = location.hash.startsWith(fragmentPrefix) ? location.hash.slice(fragmentPrefix.length) : ''
+        if (!packed) { setStatus('Abra esta página pelo endereço antigo para recuperar os dados deste navegador.'); return }
+        try {
+          const payload = await unpack(packed)
+          if (!payload || payload.version !== 1 || !Array.isArray(payload.entries)) throw new Error('Dados inválidos.')
+          let imported = 0
+          for (const [key, value] of payload.entries) {
+            if (typeof key !== 'string' || typeof value !== 'string') continue
+            const target = canonicalKey(key)
+            if (localStorage.getItem(target) === null) { localStorage.setItem(target, value); imported += 1 }
+          }
+          await saveKnowledge(payload.knowledge)
+          history.replaceState(null, '', '/recuperar-progresso')
+          setStatus(imported ? 'Dados recuperados. Abrindo o niorb…' : 'Os dados deste navegador já estavam preservados. Abrindo o niorb…')
+          setTimeout(() => location.replace('/app'), 900)
+        } catch {
+          history.replaceState(null, '', '/recuperar-progresso')
+          setStatus('Não foi possível recuperar estes dados automaticamente. Entre em contato com o suporte.')
+        }
+      }
+
+      if (location.hostname.endsWith('.workers.dev')) void exportLegacyData()
+      else void importCanonicalData()
+    </script>
+  </body>
+</html>

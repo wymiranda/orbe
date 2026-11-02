@@ -1,0 +1,94 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <defs>
+    <radialGradient id="bg" cx="50%" cy="40%" r="72%">
+      <stop offset="0" stop-color="#cd9741"/>
+      <stop offset="1" stop-color="#a5722a"/>
+    </radialGradient>
+    <filter id="shadow" x="-30%" y="-30%" width="160%" height="170%">
+      <feDropShadow dx="0" dy="16" stdDeviation="16" flood-color="#4a2d08" flood-opacity=".35"/>
+    </filter>
+    <filter id="soft" x="-30%" y="-30%" width="160%" height="170%">
+      <feDropShadow dx="0" dy="6" stdDeviation="7" flood-color="#4a2d08" flood-opacity=".22"/>
+    </filter>
+    <style>
+      .han { font-family: "Noto Serif SC", "Source Han Serif SC", "SimSun", "Songti SC", serif; font-weight: 700; text-anchor: middle; dominant-baseline: central; }
+      .pin { font-family: "Segoe UI", "Helvetica Neue", Arial, sans-serif; font-weight: 600; text-anchor: middle; dominant-baseline: central; letter-spacing: .02em; }
+    </style>
+  </defs>
+
+  <rect width="1024" height="1024" fill="url(#bg)"/>
+  <text class="han" x="512" y="500" font-size="800" fill="#ffffff" fill-opacity=".06">眼</text>
+  <g fill="#fbf3e4" fill-opacity=".55">
+    <circle cx="140" cy="160" r="8"/><circle cx="900" cy="190" r="7"/><circle cx="110" cy="930" r="6"/><circle cx="930" cy="900" r="6"/>
+  </g>
+
+  <!-- the word -->
+  <g filter="url(#shadow)">
+    <rect x="352" y="70" width="320" height="270" rx="40" fill="#e3d2b1"/>
+    <rect x="352" y="70" width="320" height="246" rx="40" fill="#ffffff"/>
+  </g>
+  <text class="han" x="512" y="172" font-size="150" fill="#1d1c1a">猫</text>
+  <text class="pin" x="512" y="276" font-size="34" fill="#b7832f">māo</text>
+
+  <!-- four pictures -->
+  <g filter="url(#soft)">
+    <rect x="132" y="396" width="360" height="262" rx="36" fill="#e3d2b1"/>
+    <rect x="132" y="396" width="360" height="240" rx="36" fill="#fbf3e4"/>
+    <rect x="532" y="396" width="360" height="262" rx="36" fill="#e3d2b1"/>
+    <rect x="532" y="396" width="360" height="240" rx="36" fill="#fbf3e4"/>
+    <rect x="132" y="694" width="360" height="262" rx="36" fill="#e3d2b1"/>
+    <rect x="132" y="694" width="360" height="240" rx="36" fill="#fbf3e4"/>
+    <rect x="532" y="694" width="360" height="262" rx="36" fill="#e3d2b1"/>
+    <rect x="532" y="694" width="360" height="240" rx="36" fill="#fbf3e4"/>
+  </g>
+
+  <!-- apple -->
+  <g transform="translate(312 516)">
+    <path d="M 0 -50 C -26 -70, -86 -62, -86 -4 C -86 52, -46 92, -18 86 C -8 84, 8 84, 18 86 C 46 92, 86 52, 86 -4 C 86 -62, 26 -70, 0 -50 Z" fill="#c8372d"/>
+    <path d="M -46 -22 C -50 -40, -36 -50, -24 -48" fill="none" stroke="#ffffff" stroke-opacity=".5" stroke-width="9" stroke-linecap="round"/>
+    <path d="M 0 -50 C 0 -66, 4 -80, 12 -90" fill="none" stroke="#5b3a1a" stroke-width="9" stroke-linecap="round"/>
+    <path d="M 12 -78 C 30 -100, 60 -96, 64 -86 C 52 -66, 28 -64, 12 -78 Z" fill="#2e7d5b"/>
+  </g>
+
+  <!-- cat: the right answer -->
+  <g transform="translate(712 522)">
+    <path d="M -84 -30 L -74 -104 L -24 -66 Z" fill="#e08a3c"/>
+    <path d="M 84 -30 L 74 -104 L 24 -66 Z" fill="#e08a3c"/>
+    <path d="M -66 -46 L -64 -84 L -38 -64 Z" fill="#f6c9a8"/>
+    <path d="M 66 -46 L 64 -84 L 38 -64 Z" fill="#f6c9a8"/>
+    <ellipse cx="0" cy="0" rx="96" ry="84" fill="#e08a3c"/>
+    <path d="M -14 -82 L -8 -52 M 14 -82 L 8 -52 M 0 -84 L 0 -50" stroke="#c26d24" stroke-width="8" stroke-linecap="round"/>
+    <ellipse cx="0" cy="34" rx="50" ry="36" fill="#fbe6d2"/>
+    <circle cx="-36" cy="-6" r="11" fill="#1d1c1a"/><circle cx="36" cy="-6" r="11" fill="#1d1c1a"/>
+    <path d="M -10 16 L 10 16 L 0 28 Z" fill="#c8372d"/>
+    <path d="M 0 28 Q -12 44 -24 38 M 0 28 Q 12 44 24 38" fill="none" stroke="#1d1c1a" stroke-width="5" stroke-linecap="round"/>
+    <path d="M -54 22 L -112 12 M -54 34 L -110 40 M 54 22 L 112 12 M 54 34 L 110 40" stroke="#1d1c1a" stroke-width="4" stroke-linecap="round"/>
+  </g>
+
+  <!-- tea cup -->
+  <g transform="translate(312 830)">
+    <path d="M -18 -96 C -34 -80, -2 -70, -18 -52 M 18 -96 C 2 -80, 34 -70, 18 -52" fill="none" stroke="#b7832f" stroke-opacity=".7" stroke-width="8" stroke-linecap="round"/>
+    <path d="M 64 -18 C 100 -18, 100 30, 60 30" fill="none" stroke="#2e7d5b" stroke-width="14"/>
+    <path d="M -76 -32 L 76 -32 C 76 30, 44 58, 0 58 C -44 58, -76 30, -76 -32 Z" fill="#2e7d5b"/>
+    <rect x="-76" y="-38" width="152" height="16" rx="8" fill="#3c9a72"/>
+    <rect x="-96" y="58" width="192" height="16" rx="8" fill="#d8c39c"/>
+  </g>
+
+  <!-- sun -->
+  <g transform="translate(712 820)">
+    <g stroke="#e9a93a" stroke-width="13" stroke-linecap="round">
+      <path d="M 0 -96 L 0 -76 M 0 76 L 0 96 M -96 0 L -76 0 M 76 0 L 96 0 M -68 -68 L -54 -54 M 54 54 L 68 68 M -68 68 L -54 54 M 54 -54 L 68 -68"/>
+    </g>
+    <circle r="54" fill="#f2bf4c"/>
+  </g>
+
+  <!-- the chosen picture -->
+  <rect x="528" y="392" width="368" height="248" rx="40" fill="none" stroke="#2e7d5b" stroke-width="9"/>
+  <g transform="translate(870 418)" filter="url(#soft)">
+    <circle r="40" fill="#2e7d5b"/>
+    <path d="M -18 0 L -5 14 L 20 -14" fill="none" stroke="#ffffff" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+  <g transform="translate(790 560)" filter="url(#soft)">
+    <path d="M0 0 L0 74 L19 56 L33 86 L47 79 L33 50 L59 50 Z" fill="#1d1c1a" stroke="#ffffff" stroke-width="7" stroke-linejoin="round"/>
+  </g>
+</svg>

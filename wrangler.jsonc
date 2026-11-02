@@ -1,7 +1,12 @@
 {
 	"$schema": "node_modules/wrangler/config-schema.json",
-	"name": "orbe",
+	"name": "niorb",
 	"workers_dev": true,
+	"triggers": {
+		"crons": [
+			"17 3 * * *"
+		]
+	},
 	"vars": {
 		"ADMIN_EMAIL": "wycmiranda@gmail.com"
 	},
@@ -9,13 +14,57 @@
 	"compatibility_date": "2026-10-14",
 	"assets": {
 		"binding": "ASSETS",
+		"run_worker_first": true,
 		"not_found_handling": "single-page-application"
 	},
 	"d1_databases": [
 		{
 			"binding": "DB",
-			"database_name": "orbe",
-			"database_id": "fedd790c-fe3b-44ef-8d37-50ff086d2fef"
+			"database_name": "niorb",
+			"database_id": "8fff25ca-4063-42f7-b4ad-324c3a58fb1e"
+		},
+		{
+			"binding": "CHINESE_DB",
+			"database_name": "niorb-chinese",
+			"database_id": "41956751-d292-4dad-b309-bfcd017590f4",
+			"migrations_dir": "migrations-chinese"
+		},
+		{
+			"binding": "ENGLISH_DB",
+			"database_name": "niorb-english",
+			"database_id": "69e0f37f-489b-4ec8-aad1-e423fd50974b",
+			"migrations_dir": "migrations-english"
+		}
+	],
+	"r2_buckets": [
+		{
+			"binding": "MEDIA",
+			"bucket_name": "niorb-media"
+		}
+	],
+	"ai": {
+		"binding": "AI",
+		"remote": true
+	},
+	"durable_objects": {
+		"bindings": [
+			{
+				"name": "MULTIPLAYER_ROOM",
+				"class_name": "MultiplayerRoom"
+			},
+			{
+				"name": "MULTIPLAYER_LOBBY",
+				"class_name": "MultiplayerLobby"
+			}
+		]
+	},
+	"migrations": [
+		{
+			"tag": "v1",
+			"new_sqlite_classes": [
+				"MultiplayerRoom",
+				"MultiplayerLobby"
+			]
 		}
 	]
 }
