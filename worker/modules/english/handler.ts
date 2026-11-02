@@ -1,5 +1,6 @@
 import { knownEnglishEmoji } from './vocabulary-visuals.js'
 import { loadGrammarQuestions, loadGrammarTopics } from './grammar-quiz.js'
+import { handleEnglishDeckRequest } from './decks.js'
 
 type EnglishVocabulary = {
   id: string
@@ -38,6 +39,8 @@ type EnglishChapterLine = { id: string; chapter_id: string; position: number; te
 export type EnglishEnv = { ENGLISH_DB: D1Database }
 
 const cefrLevels = ['A1', 'A2', 'B1', 'B2', 'C1', 'C2']
+/** Brutal is not offered in English yet: there is no unlock for it here. */
+const englishStudyDifficulties = ['easy', 'medium', 'hard']
 
 const importChunkSize = 500
 
@@ -78,17 +81,32 @@ function cleanVocabulary(entries: unknown[]): EnglishVocabulary[] | null {
 export async function handleEnglishRequest(request: Request, env: EnglishEnv, user?: { id: string }): Promise<Response | null> {
   const url = new URL(request.url)
 
+  if (url.pathname.startsWith('/api/english/decks') && user) {
+    const deckResponse = await handleEnglishDeckRequest(request, env, user)
+    if (deckResponse) return deckResponse
+  }
+
   if (url.pathname === '/api/english/preferences' && user) {
+    const preferences = () => env.ENGLISH_DB.prepare('SELECT cefr_level, study_difficulty FROM english_user_preferences WHERE user_id = ?').bind(user.id).first<{ cefr_level: string; study_difficulty: string }>()
     if (request.method === 'GET') {
-      const preferences = await env.ENGLISH_DB.prepare('SELECT cefr_level FROM english_user_preferences WHERE user_id = ?').bind(user.id).first<{ cefr_level: string }>()
-      return Response.json({ cefr_level: preferences?.cefr_level ?? null })
+      const saved = await preferences()
+      return Response.json({ cefr_level: saved?.cefr_level ?? null, study_difficulty: saved?.study_difficulty ?? 'easy' })
     }
     if (request.method === 'PUT') {
-      const body = await request.json().catch(() => null) as { cefrLevel?: unknown } | null
-      const cefrLevel = text(body?.cefrLevel)
-      if (!cefrLevels.includes(cefrLevel)) return Response.json({ error: 'Escolha um nível válido.' }, { status: 400 })
-      await env.ENGLISH_DB.prepare('INSERT INTO english_user_preferences (user_id, cefr_level, updated_at) VALUES (?, ?, ?) ON CONFLICT(user_id) DO UPDATE SET cefr_level = excluded.cefr_level, updated_at = excluded.updated_at').bind(user.id, cefrLevel, new Date().toISOString()).run()
-      return Response.json({ cefr_level: cefrLevel })
+      // Level and difficulty are saved independently; the level is chosen first (onboarding), so the row exists for the difficulty.
+      const body = await request.json().catch(() => null) as { cefrLevel?: unknown; difficulty?: unknown } | null
+      const cefrLevel = body?.cefrLevel === undefined ? null : text(body.cefrLevel)
+      const difficulty = body?.difficulty === undefined ? null : text(body.difficulty)
+      if ((cefrLevel === null && difficulty === null) || (cefrLevel !== null && !cefrLevels.includes(cefrLevel))) return Response.json({ error: 'Escolha um nível válido.' }, { status: 400 })
+      if (difficulty !== null && !englishStudyDifficulties.includes(difficulty)) return Response.json({ error: 'Escolha um nível e uma dificuldade válidos.' }, { status: 400 })
+      const now = new Date().toISOString()
+      if (cefrLevel !== null) await env.ENGLISH_DB.prepare('INSERT INTO english_user_preferences (user_id, cefr_level, updated_at) VALUES (?, ?, ?) ON CONFLICT(user_id) DO UPDATE SET cefr_level = excluded.cefr_level, updated_at = excluded.updated_at').bind(user.id, cefrLevel, now).run()
+      if (difficulty !== null) {
+        const { meta } = await env.ENGLISH_DB.prepare('UPDATE english_user_preferences SET study_difficulty = ?, updated_at = ? WHERE user_id = ?').bind(difficulty, now, user.id).run()
+        if (!meta.changes) return Response.json({ error: 'Escolha um nível válido.' }, { status: 400 })
+      }
+      const saved = await preferences()
+      return Response.json({ cefr_level: saved?.cefr_level ?? null, study_difficulty: saved?.study_difficulty ?? 'easy' })
     }
   }
 

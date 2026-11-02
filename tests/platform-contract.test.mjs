@@ -87,7 +87,8 @@ test('English workspace is selectable and owns its vocabulary catalog', async ()
 test('English level is chosen freely and stored in the English database, not the platform', async () => {
   const handler = await source('worker/modules/english/handler.ts')
   const schema = await source('migrations-english/0002_create_english_user_preferences.sql')
-  const onboarding = await source('src/experiences/english/LevelOnboarding.tsx')
+  // The levels live in cefr-levels.ts, shared by the onboarding, the home card and the flashcards.
+  const onboarding = await source('src/experiences/english/cefr-levels.ts')
   const worker = await source('worker/index.ts')
   assert.match(schema, /CREATE TABLE english_user_preferences/)
   assert.match(schema, /'A1', 'A2', 'B1', 'B2', 'C1', 'C2'/)
@@ -398,4 +399,15 @@ test('Solte a Voz counts as speaking practice', async () => {
   const knowledge = await importTs('src/learning-paths/knowledge.ts')
   const snapshot = knowledge.applyActivityResult(knowledge.createKnowledgeSnapshot(), { moduleId: 'speak-aloud', language: 'zh-Hans', completedAt: 1, assessments: [{ contentId: '茶', skill: 'production', correct: true, score: 1 }] })
   assert.equal(snapshot.contents['茶'].skills.production.modalities.speaking.attempts, 1)
+})
+
+test('English Anki decks are private to their owner unless made public, and only the owner changes them', async () => {
+  const decks = await source('worker/modules/english/decks.ts')
+  const schema = await source('migrations-english/0006_create_english_anki_decks.sql')
+  assert.match(schema, /visibility TEXT NOT NULL DEFAULT 'private' CHECK \(visibility IN \('private', 'public'\)\)/)
+  // Listing and reading cards only reach the learner's own decks and public ones.
+  assert.match(decks, /WHERE d\.owner_id = \? OR d\.visibility = \\'public\\'/)
+  assert.match(decks, /WHERE id = \? AND \(owner_id = \? OR visibility = \\'public\\'\)/)
+  // Visibility changes and deletion require ownership.
+  assert.match(decks, /if \(!deck \|\| deck\.owner_id !== user\.id\) return Response\.json\(\{ error: notFound \}, \{ status: 404 \}\)/)
 })

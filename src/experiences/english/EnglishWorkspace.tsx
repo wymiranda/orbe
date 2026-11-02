@@ -1,8 +1,10 @@
 import { Suspense, lazy, useEffect, useState } from 'react'
 import { BookOpen, ChartNoAxesCombined, CircleHelp, Gamepad2, House, Layers3, LayoutGrid, Menu, Moon, PenLine, Settings, Sun, type LucideIcon } from 'lucide-react'
 import '../../App.css'
-import EnglishHome from './EnglishHome'
+import EnglishHome, { type EnglishStudyDifficulty } from './EnglishHome'
 import LevelOnboarding from './LevelOnboarding'
+import { cefrLevels } from './cefr-levels'
+import AnkiDecks, { type EnglishDeck } from './AnkiDecks'
 import { parseCatalogCsv } from './catalog-csv'
 import { englishPictureSource } from './picture-source'
 import GamesHome, { type EnglishGame } from './GamesHome'
@@ -37,12 +39,44 @@ function loadProgress(): Progress {
 function saveProgress(progress: Progress) { localStorage.setItem(progressKey, JSON.stringify(progress)) }
 function normalized(value: string) { return value.normalize('NFD').replace(/\p{Diacritic}/gu, '').toLocaleLowerCase().trim() }
 
-// Cards come straight from the catalogue: words of the chosen level not learned yet, shuffled once per visit.
-function EnglishFlashcards({ vocabulary, cefrLevel, progress, onProgress, onExit }: { vocabulary: Vocabulary[]; cefrLevel: string | null; progress: Progress; onProgress: (next: Progress) => void; onExit: () => void }) {
-  const [order] = useState(() => new Map(vocabulary.map((item) => [item.id, Math.random()])))
+// Start screen, like the Chinese flashcards: pick a level or one of your Anki decks, then study.
+// Starts on the learner's own level (remounted once it loads).
+function EnglishFlashcards({ vocabulary, cefrLevel, progress, onProgress }: { vocabulary: Vocabulary[]; cefrLevel: string | null; progress: Progress; onProgress: (next: Progress) => void }) {
+  const [choice, setChoice] = useState(cefrLevel ?? 'A1')
+  const [studying, setStudying] = useState(false)
+  const [decks, setDecks] = useState<EnglishDeck[]>([])
+  // Cards of the chosen deck, keyed by deck id; a deck card reads like a catalogue word without pronunciation or level.
+  const [deckCards, setDeckCards] = useState<{ deckId: string; cards: Vocabulary[] } | null>(null)
+  const [error, setError] = useState('')
+  const deckId = choice.startsWith('deck:') ? choice.slice(5) : null
+  useEffect(() => { void fetch('/api/english/decks').then(async (response) => response.ok ? response.json() as Promise<EnglishDeck[]> : []).then(setDecks).catch(() => setDecks([])) }, [])
+  useEffect(() => {
+    if (!deckId || deckCards?.deckId === deckId) return
+    let active = true
+    void fetch(`/api/english/decks/${deckId}/cards`).then(async (response) => { if (!response.ok) throw new Error('Nenhuma palavra encontrada.'); return response.json() as Promise<{ id: string; front: string; back: string }[]> })
+      .then((cards) => { if (active) { setError(''); setDeckCards({ deckId, cards: cards.map((card) => ({ id: card.id, term: card.front, portuguese: card.back, pronunciation: null, part_of_speech: null, cefr_level: null })) }) } })
+      .catch((cause: unknown) => { if (active) setError(cause instanceof Error ? cause.message : 'Nenhuma palavra encontrada.') })
+    return () => { active = false }
+  }, [deckId, deckCards?.deckId])
+  const pool = deckId ? (deckCards?.deckId === deckId ? deckCards.cards : []) : vocabulary.filter((item) => item.cefr_level === choice)
+  const pending = pool.filter((item) => !progress.learned.includes(item.id))
+  const changeDecks = (next: EnglishDeck[]) => { setDecks(next); if (deckId && !next.some((deck) => deck.id === deckId)) setChoice(cefrLevel ?? 'A1') }
+  if (studying) return <EnglishFlashcardSession key={choice} cards={pool} deck={Boolean(deckId)} progress={progress} onProgress={onProgress} onExit={() => setStudying(false)} />
+  return <section className="welcome study-page study-dashboard">
+    <header className="study-dashboard-hero"><div><h1>Flashcards</h1><p>Revise, aprenda e consolide seu vocabulário</p></div><button type="button" onClick={() => setStudying(true)} disabled={!pending.length}>Estudar cards <span aria-hidden="true">→</span></button></header>
+    <label className="quiz-picker">Estudar<select value={choice} onChange={(event) => setChoice(event.target.value)}>{cefrLevels.map(({ level: value, name }) => <option key={value} value={value}>{value} · {name}</option>)}{decks.length > 0 && <optgroup label="Seus baralhos">{decks.map((deck) => <option key={deck.id} value={`deck:${deck.id}`}>{deck.name}</option>)}</optgroup>}</select></label>
+    <section className="study-dashboard-metrics" aria-label="Resumo dos flashcards"><article><span className="study-metric-icon deck">◒</span><div><strong>{progress.cards.length}</strong><p>no seu baralho</p><i><em style={{ width: `${Math.min(100, progress.cards.length / Math.max(1, vocabulary.length) * 100)}%` }} /></i></div></article><article><span className="study-metric-icon learned">♜</span><div><strong>{progress.learned.length}</strong><p>itens aprendidos</p><i><em style={{ width: `${Math.min(100, progress.learned.length / Math.max(1, vocabulary.length) * 100)}%` }} /></i></div></article></section>
+    {error ? <p className="error" role="alert">{error}</p> : !pending.length && (!deckId || deckCards?.deckId === deckId) && <p className="empty">Nenhuma palavra encontrada.</p>}
+    <AnkiDecks decks={decks} onDecksChange={changeDecks} />
+  </section>
+}
+
+// Cards not learned yet, shuffled once per visit: catalogue words of a level, or the cards of an Anki deck (`deck`).
+function EnglishFlashcardSession({ cards, deck, progress, onProgress, onExit }: { cards: Vocabulary[]; deck: boolean; progress: Progress; onProgress: (next: Progress) => void; onExit: () => void }) {
+  const [order] = useState(() => new Map(cards.map((item) => [item.id, Math.random()])))
   const [postponed, setPostponed] = useState<string[]>([])
   const [showAnswer, setShowAnswer] = useState(false)
-  const pending = vocabulary.filter((item) => (!cefrLevel || item.cefr_level === cefrLevel) && !progress.learned.includes(item.id)).sort((left, right) => (postponed.indexOf(left.id) - postponed.indexOf(right.id)) || ((order.get(left.id) ?? 0) - (order.get(right.id) ?? 0)))
+  const pending = cards.filter((item) => !progress.learned.includes(item.id)).sort((left, right) => (postponed.indexOf(left.id) - postponed.indexOf(right.id)) || ((order.get(left.id) ?? 0) - (order.get(right.id) ?? 0)))
   const active = pending[0] ?? null
   const rate = (learned: boolean) => {
     if (!active) return
@@ -51,7 +85,7 @@ function EnglishFlashcards({ vocabulary, cefrLevel, progress, onProgress, onExit
     setShowAnswer(false)
   }
   if (!active) return <section className="welcome study-page"><p className="eyebrow">FLASHCARDS</p><p className="empty">Nenhuma palavra encontrada.</p></section>
-  return <section className="study-session english-study-session"><header><strong>FLASHCARDS</strong><button type="button" className="secondary" onClick={onExit}>Sair</button></header><div className="study-session-content"><article className="focus-card"><p className="focus-hanzi english-term">{active.term}</p>{showAnswer ? <div className="focus-answer"><p>{active.pronunciation}</p><h2>{active.portuguese}</h2><small>{active.part_of_speech ?? '—'} · {active.cefr_level ?? 'Sem nível'}</small><div className="focus-ratings"><button type="button" className="again" onClick={() => rate(false)}>Muito difícil</button><button type="button" className="hard" onClick={() => rate(false)}>Difícil</button><button type="button" className="good" onClick={() => rate(true)}>Normal</button><button type="button" className="easy" onClick={() => rate(true)}>Fácil</button></div></div> : <button type="button" className="reveal-answer" onClick={() => setShowAnswer(true)}>Mostrar resposta</button>}</article></div></section>
+  return <section className="study-session english-study-session"><header><strong>FLASHCARDS</strong><button type="button" className="secondary" onClick={onExit}>Sair</button></header><div className="study-session-content"><article className="focus-card"><p className={deck ? 'focus-hanzi english-term english-deck-text' : 'focus-hanzi english-term'}>{active.term}</p>{showAnswer ? <div className="focus-answer"><p>{active.pronunciation}</p><h2 className={deck ? 'english-deck-text' : undefined}>{active.portuguese}</h2>{!deck && <small>{active.part_of_speech ?? '—'} · {active.cefr_level ?? 'Sem nível'}</small>}<div className="focus-ratings"><button type="button" className="again" onClick={() => rate(false)}>Muito difícil</button><button type="button" className="hard" onClick={() => rate(false)}>Difícil</button><button type="button" className="good" onClick={() => rate(true)}>Normal</button><button type="button" className="easy" onClick={() => rate(true)}>Fácil</button></div></div> : <button type="button" className="reveal-answer" onClick={() => setShowAnswer(true)}>Mostrar resposta</button>}</article></div></section>
 }
 
 function CatalogList({ vocabulary }: { vocabulary: Vocabulary[] }) {
@@ -150,6 +184,8 @@ export default function EnglishWorkspace({ onChooseWorkspace = () => {}, onLogou
   // undefined while the preference loads, null until the learner chooses a level.
   const [cefrLevel, setCefrLevel] = useState<string | null | undefined>(undefined)
   const [choosingLevel, setChoosingLevel] = useState(false)
+  const [studyDifficulty, setStudyDifficulty] = useState<EnglishStudyDifficulty>('easy')
+  const [savingSettings, setSavingSettings] = useState(false)
   const [activeGame, setActiveGame] = useState<EnglishGame | null>(null)
   // Same key as the Chinese workspace, so the chosen theme follows the learner across workspaces.
   const [theme, setTheme] = useState<'light' | 'dark'>(() => localStorage.getItem('niorb-theme') === 'dark' ? 'dark' : 'light')
@@ -162,9 +198,25 @@ export default function EnglishWorkspace({ onChooseWorkspace = () => {}, onLogou
     setCefrLevel(body.cefr_level)
     setChoosingLevel(false)
   }
-  useEffect(() => { void fetch('/api/english/preferences').then(async (response) => { if (!response.ok) throw new Error(); return response.json() as Promise<{ cefr_level: string | null }> }).then((preferences) => setCefrLevel(preferences.cefr_level)).catch(() => undefined) }, [])
+  // Session card: level and difficulty, saved one click at a time.
+  const saveStudySettings = async (settings: { cefrLevel?: string; difficulty?: EnglishStudyDifficulty }) => {
+    setSavingSettings(true)
+    try {
+      const response = await fetch('/api/english/preferences', { method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify(settings) })
+      const body = await response.json() as { cefr_level?: string | null; study_difficulty?: EnglishStudyDifficulty; error?: string }
+      if (!response.ok) throw new Error(body.error ?? 'Não foi possível salvar o nível.')
+      setCefrLevel(body.cefr_level ?? null)
+      if (body.study_difficulty) setStudyDifficulty(body.study_difficulty)
+      setError('')
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : 'Não foi possível salvar o nível.')
+    } finally {
+      setSavingSettings(false)
+    }
+  }
+  useEffect(() => { void fetch('/api/english/preferences').then(async (response) => { if (!response.ok) throw new Error(); return response.json() as Promise<{ cefr_level: string | null; study_difficulty?: EnglishStudyDifficulty }> }).then((preferences) => { setCefrLevel(preferences.cefr_level); if (preferences.study_difficulty) setStudyDifficulty(preferences.study_difficulty) }).catch(() => undefined) }, [])
   useEffect(() => { void fetch('/api/english/vocabulary').then(async (response) => { if (!response.ok) throw new Error('Não foi possível carregar o catálogo de inglês.'); return response.json() as Promise<Vocabulary[]> }).then(setVocabulary).catch((cause: unknown) => setError(cause instanceof Error ? cause.message : 'Não foi possível carregar o catálogo de inglês.')) }, [])
-  const content = section === 'flashcards' ? <EnglishFlashcards vocabulary={vocabulary} cefrLevel={cefrLevel ?? null} progress={progress} onProgress={updateProgress} onExit={() => setSection('home')} /> : section === 'writing' ? <EnglishWriting vocabulary={vocabulary} progress={progress} onProgress={updateProgress} /> : section === 'quiz' ? <EnglishQuiz vocabulary={vocabulary} progress={progress} onProgress={updateProgress} /> : section === 'admin' ? <EnglishAdmin vocabulary={vocabulary} onVocabulary={setVocabulary} /> : section === 'readings' ? <EnglishReadings /> : section === 'games' ? activeGame === 'bate-olho' ? <Suspense fallback={null}><SceneCertaModule source={englishPictureSource} embedded onExit={() => setActiveGame(null)} /></Suspense> : <GamesHome onOpenGame={setActiveGame} /> : section === 'progress' ? <section className="welcome progress-dashboard"><p className="eyebrow">PROGRESSO</p><h1>Seu inglês.</h1><div className="study-dashboard-metrics"><article><strong>{progress.learned.length}</strong><p>palavras aprendidas</p></article><article><strong>{progress.reviews}</strong><p>revisões</p></article><article><strong>{progress.spelling}</strong><p>práticas de escrita</p></article><article><strong>{progress.quizAttempts ? Math.round(progress.quizCorrect / progress.quizAttempts * 100) : 0}%</strong><p>acerto no quiz</p></article></div></section> : <EnglishHome cefrLevel={cefrLevel ?? null} onChangeLevel={() => setChoosingLevel(true)} onOpenSection={setSection} />
+  const content = section === 'flashcards' ? <EnglishFlashcards key={cefrLevel ?? ''} vocabulary={vocabulary} cefrLevel={cefrLevel ?? null} progress={progress} onProgress={updateProgress} /> : section === 'writing' ? <EnglishWriting vocabulary={vocabulary} progress={progress} onProgress={updateProgress} /> : section === 'quiz' ? <EnglishQuiz vocabulary={vocabulary} progress={progress} onProgress={updateProgress} /> : section === 'admin' ? <EnglishAdmin vocabulary={vocabulary} onVocabulary={setVocabulary} /> : section === 'readings' ? <EnglishReadings /> : section === 'games' ? activeGame === 'bate-olho' ? <Suspense fallback={null}><SceneCertaModule source={englishPictureSource} embedded onExit={() => setActiveGame(null)} /></Suspense> : <GamesHome onOpenGame={setActiveGame} /> : section === 'progress' ? <section className="welcome progress-dashboard"><p className="eyebrow">PROGRESSO</p><h1>Seu inglês.</h1><div className="study-dashboard-metrics"><article><strong>{progress.learned.length}</strong><p>palavras aprendidas</p></article><article><strong>{progress.reviews}</strong><p>revisões</p></article><article><strong>{progress.spelling}</strong><p>práticas de escrita</p></article><article><strong>{progress.quizAttempts ? Math.round(progress.quizCorrect / progress.quizAttempts * 100) : 0}%</strong><p>acerto no quiz</p></article></div></section> : <EnglishHome cefrLevel={cefrLevel ?? null} difficulty={studyDifficulty} onChangeLevel={() => setChoosingLevel(true)} onChangeStudySettings={(settings) => void saveStudySettings(settings)} onOpenSection={setSection} savingSettings={savingSettings} />
   const selectSection = (next: Section) => {
     setSection(next)
     setActiveGame(null)

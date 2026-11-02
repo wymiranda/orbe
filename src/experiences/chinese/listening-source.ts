@@ -1,6 +1,6 @@
 import type { ListeningSentence, ListeningSource } from '../../modules/listen-build/ListenBuildModule'
 import { chineseVoiceStatus, speakChinese } from './speech'
-import { sessionHskLevels, studyDifficultyLabels, withinDifficulty, type StudyDifficulty } from './study-difficulty'
+import { choosableDifficulties, sessionHskLevels, studyDifficultyLabels, withinDifficulty, type StudyDifficulty } from './study-difficulty'
 
 /** Contract of GET /api/chinese/sentences (owned by worker/modules/chinese/sentence-corpus.ts). */
 type ChineseSentence = { id: string; level: string; difficulty: 'easy' | 'medium' | 'hard' | 'brutal'; tokens: string[] }
@@ -45,10 +45,11 @@ export function preferStudiedSentences(sentences: ListeningSentence[], studied: 
  * - `maxDifficulty` limits their difficulty (the chosen one and easier ones).
  * - `studiedWord` tells which words the learner has already studied; see preferStudiedSentences.
  * - `choosable` (Jogos catalogue) lets the learner pick the level and the difficulty on the setup
- *   screen, starting from the given values; like "Construam uma frase juntos", each choice
- *   includes the levels and difficulties below it.
+ *   screen, starting from the given values, and plays exactly that part of the catalogue
+ *   (HSK 2 · Fácil is only HSK 2 Fácil sentences), whatever the learner has studied.
+ *   Brutal is offered only when `brutalUnlocked`.
  */
-export function createChineseListeningSource({ maxLevel = 2, maxDifficulty, studiedWord, strict = false, choosable }: { maxLevel?: number; maxDifficulty?: StudyDifficulty; studiedWord?: (hanzi: string) => boolean; strict?: boolean; choosable?: { level: string; difficulty: StudyDifficulty } } = {}): ListeningSource {
+export function createChineseListeningSource({ maxLevel = 2, maxDifficulty, studiedWord, strict = false, choosable }: { maxLevel?: number; maxDifficulty?: StudyDifficulty; studiedWord?: (hanzi: string) => boolean; strict?: boolean; choosable?: { level: string; difficulty: StudyDifficulty; brutalUnlocked: boolean } } = {}): ListeningSource {
   return {
     language: 'zh-Hans',
     label: 'Mandarim',
@@ -56,7 +57,7 @@ export function createChineseListeningSource({ maxLevel = 2, maxDifficulty, stud
     missingVoiceMessage: 'Este aparelho não tem uma voz em chinês instalada. Instale uma nas configurações de texto para fala para jogar.',
     filters: choosable && [
       { id: 'level', label: 'Nível HSK', initial: choosable.level, options: sessionHskLevels.map((level) => ({ value: level, label: `HSK ${level}` })) },
-      { id: 'difficulty', label: 'Dificuldade', initial: choosable.difficulty, options: (Object.keys(studyDifficultyLabels) as StudyDifficulty[]).map((difficulty) => ({ value: difficulty, label: studyDifficultyLabels[difficulty] })) },
+      { id: 'difficulty', label: 'Dificuldade', initial: choosable.difficulty, options: choosableDifficulties(choosable.brutalUnlocked).map((difficulty) => ({ value: difficulty, label: studyDifficultyLabels[difficulty] })) },
     ],
     async loadSentences(selection) {
       const level = Number(selection?.level) || maxLevel
@@ -67,9 +68,11 @@ export function createChineseListeningSource({ maxLevel = 2, maxDifficulty, stud
       ])
       const pinyin = new Map(vocabulary.map((term) => [term.hanzi, term.pinyin]))
       const offered = sentences
-        .filter((sentence) => Number(sentence.level) <= level && (!difficulty || withinDifficulty(sentence.difficulty, difficulty)))
+        .filter((sentence) => choosable
+          ? Number(sentence.level) === level && sentence.difficulty === difficulty
+          : Number(sentence.level) <= level && (!difficulty || withinDifficulty(sentence.difficulty, difficulty)))
         .map((sentence) => toListeningSentence(sentence, pinyin))
-      return studiedWord ? preferStudiedSentences(offered, studiedWord, { strict }) : offered
+      return studiedWord && !choosable ? preferStudiedSentences(offered, studiedWord, { strict }) : offered
     },
     async loadBrutalSentences() {
       const [sentences, vocabulary] = await Promise.all([

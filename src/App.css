@@ -559,11 +559,15 @@ code { background: var(--surface-2); border-radius: 0.25rem; color: var(--ink); 
 .scene-certa-option { background: var(--surface); border: 2px solid var(--line); border-radius: .85rem; overflow: hidden; padding: 0; }
 .scene-certa-option:not(:disabled):hover { border-color: var(--accent); transform: translateY(-1px); }
 .scene-certa-option img { aspect-ratio: 3 / 2; display: block; object-fit: cover; width: 100%; }
-.scene-certa-option.correct { border-color: var(--ink); box-shadow: 0 0 0 3px color-mix(in srgb, var(--ink) 18%, transparent); }
-.scene-certa-option.incorrect { border-color: var(--accent); opacity: .55; }
-.scene-certa-feedback { align-items: center; border-radius: .7rem; display: flex; justify-content: space-between; margin: 1rem auto 0; max-width: 42rem; padding: .75rem 1rem; }
-.scene-certa-feedback.correct { background: var(--surface-2); color: var(--ink-2); }
-.scene-certa-feedback.incorrect { background: var(--bg); color: var(--accent); }
+/* After an answer: the right picture glows green, a wrong pick turns red, and the game moves on by itself. */
+.scene-certa-option.correct { animation: scene-certa-pop 320ms ease-out; border-color: var(--ok); border-width: 3px; box-shadow: 0 0 0 5px color-mix(in srgb, var(--ok) 28%, transparent); }
+.scene-certa-option.incorrect { animation: scene-certa-shake 320ms ease-out; border-color: var(--accent); border-width: 3px; box-shadow: 0 0 0 5px color-mix(in srgb, var(--accent) 22%, transparent); opacity: .7; }
+.scene-certa-feedback { align-items: center; animation: scene-certa-pop 240ms ease-out; border-radius: .7rem; display: flex; font-size: 1.15rem; font-weight: 700; justify-content: space-between; margin: 1rem auto 0; max-width: 42rem; padding: .85rem 1.1rem; }
+.scene-certa-feedback.correct { background: var(--ok-soft); color: var(--ok); }
+.scene-certa-feedback.incorrect { background: var(--accent-soft); color: var(--accent); }
+@keyframes scene-certa-pop { 0% { transform: scale(.94); } 60% { transform: scale(1.04); } 100% { transform: scale(1); } }
+@keyframes scene-certa-shake { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(-6px); } 75% { transform: translateX(6px); } }
+@media (prefers-reduced-motion: reduce) { .scene-certa-option.correct, .scene-certa-option.incorrect, .scene-certa-feedback { animation: none; } }
 .scene-certa-feedback button { font-size: .82rem; padding: .55rem .75rem; }
 .scene-certa-complete { background: var(--surface); border: 1px solid var(--line); border-radius: 1rem; margin: 8vh auto; max-width: 32rem; padding: clamp(1.5rem, 6vw, 3rem); text-align: center; }
 .scene-certa-complete h1 { color: var(--ink); font-size: clamp(3rem, 14vw, 5rem); margin: .3rem 0; }
@@ -941,6 +945,8 @@ h1,
 .multiplayer-catalog h1 { font-size: clamp(1.35rem, 2.2vw, 2rem); letter-spacing: .02em; }
 .game-catalog { display: grid; gap: 1.2rem; grid-template-columns: repeat(auto-fill, minmax(11rem, 14rem)); margin-top: 1.5rem; }
 .game-catalog-entry { display: grid; gap: .55rem; }
+/* Administrators change a cover from right under its card. */
+.game-cover-edit { font-size: .78rem; justify-self: start; padding: .35rem .75rem; }
 .game-catalog-card { background: transparent; border: 0; border-radius: 0; box-shadow: none; color: var(--ink); display: grid; gap: .7rem; padding: 0; text-align: left; }
 .game-catalog-card:hover { background: transparent; color: var(--accent); filter: none; transform: translateY(-.15rem); }
 .game-catalog-image { align-items: center; aspect-ratio: 1; background: var(--primary); border-radius: .8rem; box-shadow: none; color: var(--gold); display: flex; font-family: var(--font-han); font-size: clamp(2.5rem, 5vw, 4rem); justify-content: center; width: 100%; }
@@ -1195,14 +1201,25 @@ h1,
 .english-workspace .quiz-setup { background: var(--surface); border-color: var(--line); box-shadow: none; }
 .english-workspace .learned-words-list li strong, .english-workspace .study-dashboard-metrics strong { color: var(--ink); }
 .english-workspace .learned-words-list li span, .english-workspace .learned-words-list li small { color: var(--muted); }
-.english-workspace .workspace-view button:not(.secondary) { background: var(--primary); border-color: var(--primary); }
-.english-workspace .workspace-view button:not(.secondary):hover { background: var(--primary); border-color: var(--primary); }
-/* Game cards are buttons too, but show their picture on a transparent card like in the Chinese workspace. */
-.english-workspace .workspace-view button.game-catalog-card, .english-workspace .workspace-view button.game-catalog-card:hover { background: transparent; border-color: transparent; }
+/* Plain buttons only: zero specificity, so components with their own look (home cards, game options,
+   rating buttons, game cards) keep it, as in the Chinese workspace. A higher one painted the home
+   cards in --primary, hiding their labels (ink on primary). */
+:where(.english-workspace .workspace-view) button:where(:not(.secondary)), :where(.english-workspace .workspace-view) button:where(:not(.secondary)):hover { background: var(--primary); border-color: var(--primary); }
 .english-workspace button.secondary { border-color: var(--line); color: var(--ink); }
 .english-workspace .focus-card { border-color: var(--line); box-shadow: none; }
 .english-workspace .focus-hanzi.english-term { color: var(--ink); font-family: var(--font-han); font-size: clamp(3.25rem, 11vw, 7rem); overflow-wrap: anywhere; }
 .english-workspace .english-list-actions { align-items: center; display: flex; flex-wrap: wrap; gap: .5rem; }
+/* Anki decks: card text can be a sentence or a paragraph, so it is smaller than a catalogue word and keeps its line breaks. */
+.english-workspace .english-deck-text { white-space: pre-line; }
+.english-workspace .focus-hanzi.english-term.english-deck-text { font-size: clamp(1.6rem, 5vw, 2.6rem); line-height: 1.25; }
+.anki-decks .bulk-card-controls { align-items: end; flex-wrap: wrap; }
+.anki-visibility { align-items: center; display: inline-flex; flex-wrap: wrap; gap: .35rem; }
+.anki-visibility > span { color: var(--muted); font-size: .85rem; font-weight: 600; margin-right: .2rem; }
+.anki-visibility button, .anki-deck-actions > button { font-size: .82rem; padding: .45rem .75rem; }
+.anki-deck-list { display: grid; gap: .5rem; grid-column: 1 / -1; list-style: none; margin: .5rem 0 0; padding: 0; }
+.anki-deck-list li { align-items: center; border-top: 1px solid var(--line); color: var(--ink-2); display: flex; flex-wrap: wrap; gap: .5rem 1rem; justify-content: space-between; padding-top: .6rem; }
+.anki-deck-list strong { color: var(--ink); }
+.anki-deck-actions { align-items: center; display: inline-flex; flex-wrap: wrap; gap: .5rem; }
 .english-workspace .english-writing-input { display: grid; gap: .45rem; max-width: 28rem; }
 .english-workspace .english-writing-input input { border-color: var(--line-strong); font-size: 1.15rem; padding: .75rem .85rem; }
 .english-workspace .quiz-session { background: var(--bg); }

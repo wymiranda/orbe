@@ -521,6 +521,8 @@ input:focus, textarea:focus, select:focus { border-color: var(--ink); outline: 3
   position: absolute;
   right: .35rem;
 }
+/* English cards: a word instead of a hanzi (same serif face), smaller so it fits the card. */
+.today-shortcuts .today-shortcut-word { bottom: -.5rem; font-size: 2.6rem; font-style: italic; font-weight: 700; letter-spacing: -.02em; opacity: .07; right: .5rem; }
 .today-shortcuts .tone-accent svg { color: var(--accent); }
 .today-shortcuts .tone-gold svg { color: var(--gold); }
 .today-shortcuts .tone-ok svg { color: var(--ok); }
@@ -575,6 +577,7 @@ input:focus, textarea:focus, select:focus { border-color: var(--ink); outline: 3
   .today-shortcuts button svg { height: 1.75rem; width: 1.75rem; }
   .today-shortcuts strong { font-size: 1.25rem; }
   .today-shortcuts span { font-size: 4.6rem; }
+  .today-shortcuts .today-shortcut-word { font-size: 3.6rem; }
 }
 
 /* ---------- bottom tab bar (phones) ---------- */

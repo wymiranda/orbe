@@ -19,10 +19,13 @@
     "db:english:migrate:remote": "wrangler d1 migrations apply ENGLISH_DB --remote"
   },
   "dependencies": {
+    "fflate": "^0.8.3",
+    "fzstd": "^0.1.1",
     "hanzi-writer": "^3.7.3",
     "lucide-react": "^1.59.0",
     "react": "^19.2.8",
-    "react-dom": "^19.2.8"
+    "react-dom": "^19.2.8",
+    "sql.js": "^1.15.2"
   },
   "devDependencies": {
     "@cloudflare/vite-plugin": "^1.64.0",
@@ -31,6 +34,7 @@
     "@types/node": "^24.19.2",
     "@types/react": "^19.2.18",
     "@types/react-dom": "^19.2.7",
+    "@types/sql.js": "^1.4.11",
     "@vitejs/plugin-react": "^6.1.1",
     "oxlint": "^1.81.0",
     "tailwindcss": "^4.3.3",

@@ -579,8 +579,8 @@ function ChineseWorkspace({ onChooseWorkspace = () => {}, onLogout = () => {} }:
   }, [section]);
   const listeningMaxLevel = Number(user?.self_assessed_hsk_level) >= 2 ? 2 : 1;
   // The catalogue opens on the learner's level and difficulty; both can be changed before playing.
-  const catalogListeningSource = useMemo(() => createChineseListeningSource({ maxLevel: listeningMaxLevel, studiedWord: knowledge ? studiedWord(knowledge, null) : undefined, choosable: { level: String(listeningMaxLevel), difficulty: user?.study_difficulty ?? "easy" } }), [listeningMaxLevel, knowledge, user?.study_difficulty]);
-  const catalogSpeakingSource = useMemo(() => createChineseSpeakingSource({ studiedWord: knowledge ? studiedWord(knowledge, null) : undefined, initial: { level: String(listeningMaxLevel), difficulty: user?.study_difficulty ?? "easy" } }), [listeningMaxLevel, knowledge, user?.study_difficulty]);
+  const catalogListeningSource = useMemo(() => createChineseListeningSource({ maxLevel: listeningMaxLevel, choosable: { level: String(listeningMaxLevel), difficulty: user?.study_difficulty ?? "easy", brutalUnlocked: Boolean(user?.brutal_unlocked) } }), [listeningMaxLevel, user?.study_difficulty, user?.brutal_unlocked]);
+  const catalogSpeakingSource = useMemo(() => createChineseSpeakingSource({ initial: { level: String(listeningMaxLevel), difficulty: user?.study_difficulty ?? "easy", brutalUnlocked: Boolean(user?.brutal_unlocked) } }), [listeningMaxLevel, user?.study_difficulty, user?.brutal_unlocked]);
   let content: React.ReactNode;
   if (sessionSummary && overview)
     content = <SessionSummary reviewed={sessionSummary.reviewed} newWords={sessionSummary.words.flatMap((id) => overview.vocabulary.filter((term) => term.id === id))} level={user?.self_assessed_hsk_level ?? "1"} vocabulary={overview.vocabulary} onDone={() => { setSessionSummary(null); setSection("home"); }} />;
@@ -619,7 +619,7 @@ function ChineseWorkspace({ onChooseWorkspace = () => {}, onLogout = () => {} }:
       ? <SpeakAloudModule source={catalogSpeakingSource} embedded onExit={() => setActiveGame(null)} />
       : activeGame === "multiplayer"
         ? <MultiplayerPresence onAcceptInvite={(code) => setGameRoom(code)}><MultiplayerModule vocabulary={sentenceGameVocabulary} key={gameRoom} initialRoomCode={gameRoom} startSentenceSetup userId={user?.id ?? ""} isAdmin={user?.role === "admin"} /></MultiplayerPresence>
-        : <GamesHome onOpenSceneCerta={() => setActiveGame("scene-certa")} onOpenListening={() => setActiveGame("listen-build")} onOpenMultiplayer={() => setActiveGame("multiplayer")} onOpenSpeaking={() => setActiveGame("speak-aloud")} />;
+        : <GamesHome isAdmin={user?.role === "admin"} onOpenSceneCerta={() => setActiveGame("scene-certa")} onOpenListening={() => setActiveGame("listen-build")} onOpenMultiplayer={() => setActiveGame("multiplayer")} onOpenSpeaking={() => setActiveGame("speak-aloud")} />;
   else if (section === "admin") content = <ChineseAdmin embedded />;
   else if (section === "profile")
     content = (

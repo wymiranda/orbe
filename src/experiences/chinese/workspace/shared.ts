@@ -25,7 +25,7 @@ export type CurrentUser = {
   study_suggestion?: StudySuggestion;
 } | null;
 
-export { sessionHskLevels, studyDifficultyLabels, withinDifficulty, type StudyDifficulty, type StudySuggestion } from "../study-difficulty";
+export { choosableDifficulties, sessionHskLevels, studyDifficultyLabels, withinDifficulty, type StudyDifficulty, type StudySuggestion } from "../study-difficulty";
 
 export type Section =
   | "home"

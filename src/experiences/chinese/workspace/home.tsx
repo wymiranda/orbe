@@ -11,7 +11,7 @@ import {
 } from "lucide-react";
 import "../../../App.css";
 import { loadDeviceProgress, type DailyStudyActivity } from "../device-progress";
-import { type StudyOverview, type CurrentUser, type Section, type StudyDifficulty, levelNumber, sessionHskLevels, studyDifficultyLabels } from "./shared";
+import { type StudyOverview, type CurrentUser, type Section, type StudyDifficulty, choosableDifficulties, levelNumber, sessionHskLevels, studyDifficultyLabels } from "./shared";
 
 export function greetingForNow() {
   const hour = new Date().getHours();
@@ -99,7 +99,7 @@ export function DailySessionHome({
 }) {
   const difficulty = user?.study_difficulty ?? "easy";
   const brutalUnlocked = Boolean(user?.brutal_unlocked);
-  const difficulties: StudyDifficulty[] = brutalUnlocked ? ["easy", "medium", "hard", "brutal"] : ["easy", "medium", "hard"];
+  const difficulties = choosableDifficulties(brutalUnlocked);
   const suggestion = user?.study_suggestion ?? null;
   // Announced once: the server is told right away, the notice stays until the page changes.
   const [brutalNotice] = useState(user?.brutal_unlocked === 1);

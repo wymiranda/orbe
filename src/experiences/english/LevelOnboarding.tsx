@@ -1,13 +1,6 @@
 import { useState } from 'react'
+import { cefrLevels } from './cefr-levels'
 
-const cefrLevels = [
-  { level: 'A1', name: 'Iniciante' },
-  { level: 'A2', name: 'Básico' },
-  { level: 'B1', name: 'Intermediário' },
-  { level: 'B2', name: 'Intermediário superior' },
-  { level: 'C1', name: 'Avançado' },
-  { level: 'C2', name: 'Proficiente' },
-]
 
 export default function LevelOnboarding({ initialLevel, onSave }: { initialLevel: string | null; onSave: (cefrLevel: string) => Promise<void> }) {
   const [cefrLevel, setCefrLevel] = useState(initialLevel ?? 'A1')

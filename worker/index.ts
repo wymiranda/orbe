@@ -6,6 +6,7 @@ import { handleMultiplayerRequest, MultiplayerLobby, MultiplayerRoom } from './m
 import { handleEmailRequest } from './modules/email/handler.js'
 import { handleMediaRequest, purgeUnlinkedMedia } from './modules/media/handler.js'
 import { handleTeachingRequest } from './modules/teaching/handler.js'
+import { handleGamesRequest } from './modules/games/handler.js'
 import { currentUser, handleAuth } from './auth.js'
 
 type Env = {
@@ -90,6 +91,9 @@ export default {
 
     const multiplayerResponse = await handleMultiplayerRequest(request, env)
     if (multiplayerResponse) return multiplayerResponse
+
+    const gamesResponse = await handleGamesRequest(request, env)
+    if (gamesResponse) return gamesResponse
 
     const emailResponse = await handleEmailRequest(request, env)
     if (emailResponse) return emailResponse

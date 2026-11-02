@@ -39,6 +39,8 @@ type Attempt = { termId: string; correct: boolean; responseMs: number }
 
 const counts = [5, 10]
 const optionCount = 4
+/** After an answer the game moves on by itself, leaving time to see the result (longer after a mistake, to see the right picture). */
+const advanceDelayMs = { correct: 1200, incorrect: 2600 }
 
 function shuffle<T>(items: T[]) { const next = [...items]; for (let index = next.length - 1; index > 0; index -= 1) { const swap = Math.floor(Math.random() * (index + 1)); [next[index], next[swap]] = [next[swap], next[index]] } return next }
 export function hasVisual(term: PictureTerm) { return Boolean(term.visual_kind && term.visual_value?.trim()) }
@@ -84,6 +86,8 @@ function SceneCertaModule({ source, embedded = false, activity, sessionMode = fa
   const [error, setError] = useState('')
   const startedAt = useRef(0)
   const autoStarted = useRef(false)
+  const advanceTimer = useRef<number | undefined>(undefined)
+  const completed = useRef(false)
 
   useEffect(() => { void source.loadTerms().then((items) => setTerms(items.filter(hasVisual))).catch((cause: unknown) => { setTerms([]); setError(cause instanceof Error ? cause.message : 'Não foi possível preparar o jogo.') }) }, [source])
 
@@ -101,7 +105,7 @@ function SceneCertaModule({ source, embedded = false, activity, sessionMode = fa
 
   function start(amount = count) {
     if (!terms || !playable) { setError('Ainda não há vocabulário com imagem ou emoji suficiente para jogar.'); return }
-    setError(''); setQuestions(buildQuestions(terms, answers, amount)); setIndex(0); setSelected(null); setAttempts([]); setFinished(false); startedAt.current = performance.now()
+    setError(''); setQuestions(buildQuestions(terms, answers, amount)); setIndex(0); setSelected(null); setAttempts([]); setFinished(false); completed.current = false; startedAt.current = performance.now()
   }
 
   useEffect(() => {
@@ -117,9 +121,18 @@ function SceneCertaModule({ source, embedded = false, activity, sessionMode = fa
     setAttempts((items) => [...items, { termId: current.term.id, correct: termId === current.term.id, responseMs: Math.round(performance.now() - startedAt.current) }])
   }
 
+  // The button still skips the wait; whichever comes first advances, only once.
+  useEffect(() => {
+    if (!selected) return
+    advanceTimer.current = window.setTimeout(next, correct ? advanceDelayMs.correct : advanceDelayMs.incorrect)
+    return () => window.clearTimeout(advanceTimer.current)
+  }, [selected, index])
+
   function next() {
-    if (!current || !selected) return
+    window.clearTimeout(advanceTimer.current)
+    if (!current || !selected || completed.current) return
     if (index + 1 < questions.length) { setIndex((value) => value + 1); setSelected(null); startedAt.current = performance.now(); return }
+    completed.current = true
     const result: ActivityResult = {
       requestId: activity?.id,
       moduleId: 'scene-certa',

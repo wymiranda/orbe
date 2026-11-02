@@ -1,7 +1,12 @@
 import { useEffect, useState } from 'react'
+import { cefrLevels } from './cefr-levels'
 import { ArrowRight, BookOpen, Flame, Gamepad2, Layers3, PenLine, Play, type LucideIcon } from 'lucide-react'
 
 type HomeSection = 'flashcards' | 'games' | 'readings' | 'writing'
+export type EnglishStudyDifficulty = 'easy' | 'medium' | 'hard'
+
+// Same choices as the Chinese session card. Difficulty is stored but content is not split by it yet.
+const difficulties: { value: EnglishStudyDifficulty; label: string }[] = [{ value: 'easy', label: 'Fácil' }, { value: 'medium', label: 'Médio' }, { value: 'hard', label: 'Difícil' }]
 
 // Values the English workspace does not track yet (streak, spaced repetition, session plan) render as this placeholder.
 const pending = '—'
@@ -39,14 +44,22 @@ function NewYorkClock() {
   )
 }
 
-const shortcuts: { section: HomeSection; label: string; Icon: LucideIcon; tone: string }[] = [
-  { section: 'flashcards', label: 'Flashcards', Icon: Layers3, tone: 'accent' },
-  { section: 'games', label: 'Jogos', Icon: Gamepad2, tone: 'gold' },
-  { section: 'readings', label: 'Leitura', Icon: BookOpen, tone: 'ok' },
-  { section: 'writing', label: 'Escrita', Icon: PenLine, tone: 'info' },
+// The faded word behind each card plays the part of the hanzi on the Chinese cards (卡 玩 读 写).
+const shortcuts: { section: HomeSection; label: string; word: string; Icon: LucideIcon; tone: string }[] = [
+  { section: 'flashcards', label: 'Flashcards', word: 'Cards', Icon: Layers3, tone: 'accent' },
+  { section: 'games', label: 'Jogos', word: 'Play', Icon: Gamepad2, tone: 'gold' },
+  { section: 'readings', label: 'Leitura', word: 'Read', Icon: BookOpen, tone: 'ok' },
+  { section: 'writing', label: 'Escrita', word: 'Write', Icon: PenLine, tone: 'info' },
 ]
 
-export default function EnglishHome({ cefrLevel, onChangeLevel, onOpenSection }: { cefrLevel: string | null; onChangeLevel: () => void; onOpenSection: (section: HomeSection) => void }) {
+export default function EnglishHome({ cefrLevel, difficulty, onChangeLevel, onChangeStudySettings, onOpenSection, savingSettings = false }: {
+  cefrLevel: string | null
+  difficulty: EnglishStudyDifficulty
+  onChangeLevel: () => void
+  onChangeStudySettings: (settings: { cefrLevel?: string; difficulty?: EnglishStudyDifficulty }) => void
+  onOpenSection: (section: HomeSection) => void
+  savingSettings?: boolean
+}) {
   const [greeting] = useState(() => greetingFor(new Date().getHours()))
   return (
     <div className="niorb-today">
@@ -76,6 +89,22 @@ export default function EnglishHome({ cefrLevel, onChangeLevel, onOpenSection }:
             <span>{pending} atividades · <button type="button" className="today-session-level" onClick={onChangeLevel} aria-label={cefrLevel ? `Nível ${cefrLevel}. Mudar nível` : 'Escolher nível'}>{cefrLevel ?? pending}</button></span>
           </div>
         </div>
+        <div className="today-session-settings">
+          <div role="group" aria-label="Dificuldade">
+            {difficulties.map(({ value, label }) => (
+              <button type="button" key={value} aria-pressed={difficulty === value} disabled={savingSettings} onClick={() => onChangeStudySettings({ difficulty: value })}>
+                {label}
+              </button>
+            ))}
+          </div>
+          <div role="group" aria-label="Nível">
+            {cefrLevels.map(({ level }) => (
+              <button type="button" key={level} aria-pressed={cefrLevel === level} disabled={savingSettings} onClick={() => onChangeStudySettings({ cefrLevel: level })}>
+                {level}
+              </button>
+            ))}
+          </div>
+        </div>
       </section>
 
       <button type="button" className="today-review" onClick={() => onOpenSection('flashcards')}>
@@ -87,10 +116,11 @@ export default function EnglishHome({ cefrLevel, onChangeLevel, onOpenSection }:
       </button>
 
       <nav className="today-shortcuts" aria-label="Atalhos de estudo">
-        {shortcuts.map(({ section, label, Icon, tone }) => (
+        {shortcuts.map(({ section, label, word, Icon, tone }) => (
           <button type="button" key={section} className={`tone-${tone}`} onClick={() => onOpenSection(section)}>
             <Icon aria-hidden="true" size={24} strokeWidth={2} />
             <strong>{label}</strong>
+            <span className="today-shortcut-word" lang="en" aria-hidden="true">{word}</span>
           </button>
         ))}
       </nav>

@@ -1,6 +1,6 @@
 const CACHE_NAME = 'niorb-shell-v8'
 const APP_SHELL = ['/', '/manifest.webmanifest', '/niorb-icon.svg']
-const OFFLINE_CONTENT = ['/api/readings', '/api/chinese/vocabulary', '/api/chinese/sentences', '/api/study/decks', '/api/multiplayer/catalog/sentence-image']
+const OFFLINE_CONTENT = ['/api/readings', '/api/chinese/vocabulary', '/api/chinese/sentences', '/api/study/decks', '/api/multiplayer/catalog/sentence-image', '/api/games/cover-images']
 
 self.addEventListener('install', (event) => {
   event.waitUntil(caches.open(CACHE_NAME).then((cache) => cache.addAll(APP_SHELL)))
