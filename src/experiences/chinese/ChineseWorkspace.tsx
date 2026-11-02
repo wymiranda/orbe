@@ -11,6 +11,7 @@ import type { WritingPracticeItem } from "../../modules/writing/WritingModule";
 import type { QuizQuestion, QuizSource } from "../../modules/quiz/QuizModule";
 import { createCardsForVocabulary, loadDeviceProgress } from "./device-progress";
 import { startStudySync } from "./study-sync";
+import { chineseFlashcardSource } from "./flashcard-source";
 import { chineseQuizSource } from "./quiz-source";
 import { KnowledgeRepository } from "../../learning-paths/repository";
 import type { ActivityRequest, ActivityResult, KnowledgeSnapshot } from "../../learning-paths/types";
@@ -579,6 +580,7 @@ function ChineseWorkspace({ onChooseWorkspace = () => {}, onLogout = () => {} }:
   }, [section]);
   const listeningMaxLevel = Number(user?.self_assessed_hsk_level) >= 2 ? 2 : 1;
   // The catalogue opens on the learner's level and difficulty; both can be changed before playing.
+  const flashcardSource = useMemo(() => chineseFlashcardSource(user?.self_assessed_hsk_level ?? "1"), [user?.self_assessed_hsk_level]);
   const catalogListeningSource = useMemo(() => createChineseListeningSource({ maxLevel: listeningMaxLevel, choosable: { level: String(listeningMaxLevel), difficulty: user?.study_difficulty ?? "easy", brutalUnlocked: Boolean(user?.brutal_unlocked) } }), [listeningMaxLevel, user?.study_difficulty, user?.brutal_unlocked]);
   const catalogSpeakingSource = useMemo(() => createChineseSpeakingSource({ initial: { level: String(listeningMaxLevel), difficulty: user?.study_difficulty ?? "easy", brutalUnlocked: Boolean(user?.brutal_unlocked) } }), [listeningMaxLevel, user?.study_difficulty, user?.brutal_unlocked]);
   let content: React.ReactNode;
@@ -587,12 +589,12 @@ function ChineseWorkspace({ onChooseWorkspace = () => {}, onLogout = () => {} }:
   else if (section === "readings")
     content = <ReadingsModule embedded isAdmin={user?.role === "admin"} onReaderOpen={() => { setMenuVisible(false); setDesktopMenuHidden(true); }} onReadingChapterChange={setReadingChapterOpen} />;
   else if (section === "flashcards" && weakReview?.stage === "cards")
-    content = <StudyModule key={weakReview.activity.id} embedded activity={weakReview.activity} activityStage="review" skipActivityIntroduction onComplete={finishWeakCards} onExit={returnToTrailOrchestrator} />;
+    content = <StudyModule key={weakReview.activity.id} source={flashcardSource} embedded activity={weakReview.activity} activityStage="review" skipActivityIntroduction onComplete={finishWeakCards} onExit={returnToTrailOrchestrator} />;
   else if (section === "writing" && weakReview?.stage === "writing")
     content = <WritingModule key={weakReview.activity.id} items={weakReview.writingItems} embedded guidedOnly onComplete={finishWeakWriting} onExit={returnToTrailOrchestrator} />;
   else if (section === "flashcards") content = trailActivity?.anchor && !trailIntroductionSeen
     ? <TrailSentenceAnchor anchor={trailActivity.anchor} onStart={() => setTrailIntroductionSeen(true)} />
-    : <StudyModule embedded activity={trailActivity} activityStage={trailStudyStage} skipActivityIntroduction wallLevel={user?.self_assessed_hsk_level ?? "1"} onComplete={completeTrailActivity} onExit={returnToTrailOrchestrator} />;
+    : <StudyModule source={flashcardSource} embedded activity={trailActivity} activityStage={trailStudyStage} skipActivityIntroduction onComplete={completeTrailActivity} onExit={returnToTrailOrchestrator} />;
   else if (section === "writing") content = sessionWritingItems
     ? <WritingModule items={sessionWritingItems} embedded guidedOnly onComplete={beginTrailReview} onExit={returnToTrailOrchestrator} />
     : <ChineseWriting />;

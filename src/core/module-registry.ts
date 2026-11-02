@@ -3,6 +3,8 @@ import type { QuizSource } from '../modules/quiz/QuizModule'
 import type { PictureGameSource } from '../modules/scene-certa/SceneCertaModule'
 import type { ListeningSource } from '../modules/listen-build/ListenBuildModule'
 import type { SpeakingSource } from '../modules/speak-aloud/SpeakAloudModule'
+import type { FlashcardSource } from '../modules/study/flashcard-source'
+import { createProgressStore } from '../modules/study/engine/progress-store'
 
 // Every module and workspace is loaded on demand, so opening one workspace
 // never downloads the code of the others.
@@ -40,6 +42,8 @@ const unconfiguredQuizSource: QuizSource = {
 // Games receive their content from an experience; standalone they have nothing to play.
 const unconfiguredPictureSource: PictureGameSource = { language: 'und', label: '', intro: '', loadTerms: async () => [] }
 const unconfiguredListeningSource: ListeningSource = { language: 'und', label: '', intro: '', missingVoiceMessage: '', loadSentences: async () => [], voiceStatus: async () => 'unknown', speak: () => {} }
+// Flashcards too: the engine works on the words and the store a workspace gives it.
+const unconfiguredFlashcardSource: FlashcardSource<{ id: string }> = { language: 'und', store: createProgressStore({ storageKey: 'niorb:unconfigured-flashcards:v1', changeEvent: 'niorb:unconfigured-flashcards' }), loadVocabulary: async () => [], cachedVocabulary: () => [], face: () => ({ front: '', meaning: '' }), speak: () => false }
 const unconfiguredSpeakingSource: SpeakingSource = { language: 'und', recognitionLanguage: 'und', segmentation: 'words', label: '', intro: '', loadItems: async () => [] }
 
 export const moduleRegistry: NiorbModule[] = [
@@ -55,7 +59,7 @@ export const moduleRegistry: NiorbModule[] = [
     id: 'study',
     name: 'Flashcards',
     kind: 'module',
-    component: StudyModule,
+    component: () => createElement(StudyModule, { source: unconfiguredFlashcardSource }),
     enabledByDefault: true,
     exposedInNavigation: false,
   },

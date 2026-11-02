@@ -76,7 +76,8 @@ test('English workspace is selectable and owns its vocabulary catalog', async ()
   assert.match(registry, /id: 'english'/)
   assert.match(registry, /component: EnglishWorkspace/)
   assert.match(registry, /enabledByDefault: true/)
-  assert.match(workspace, /niorb:english:progress:v1/)
+  // The pre-engine English record keeps its key (read once by the migration, never deleted).
+  assert.match(await source('src/experiences/english/english-progress.ts'), /niorb:english:progress:v1/)
   assert.match(handler, /\/api\/english\/vocabulary/)
   assert.match(handler, /\/api\/english\/readings/)
   assert.match(handler, /env\.ENGLISH_DB/)
@@ -132,11 +133,116 @@ test('existing practice modules can report learning evidence without owning the 
 
 test('flashcard vocabulary remains available locally after its first download', async () => {
   const progress = await source('src/experiences/chinese/device-progress.ts')
+  const chinese = await source('src/experiences/chinese/flashcard-source.tsx')
   const study = await source('src/modules/study/StudyModule.tsx')
   assert.match(progress, /loadOfflineVocabulary/)
   assert.match(progress, /saveOfflineVocabulary/)
-  assert.match(study, /loadOfflineVocabulary\(\)/)
-  assert.match(study, /saveOfflineVocabulary\(catalogue\)/)
+  assert.match(chinese, /loadOfflineVocabulary\(\)/)
+  assert.match(chinese, /saveOfflineVocabulary\(catalogue\)/)
+  // Offline, the module falls back to the catalogue the source keeps on the device.
+  assert.match(study, /source\.cachedVocabulary\(\)/)
+})
+
+/** A browser window with an in-memory localStorage, enough for the device progress stores. */
+function fakeWindow(entries = {}) {
+  const storage = new Map(Object.entries(entries))
+  globalThis.window = {
+    localStorage: { getItem: (key) => storage.has(key) ? storage.get(key) : null, setItem: (key, value) => storage.set(key, String(value)), removeItem: (key) => storage.delete(key) },
+    dispatchEvent: () => true,
+    addEventListener: () => {},
+    removeEventListener: () => {},
+  }
+  return storage
+}
+
+test('every language studies flashcards on the one shared engine', async () => {
+  const study = await source('src/modules/study/StudyModule.tsx')
+  const english = await source('src/experiences/english/EnglishWorkspace.tsx')
+  const chinese = await source('src/experiences/chinese/ChineseWorkspace.tsx')
+  // The module knows no language: words, store and card faces come from the source.
+  assert.doesNotMatch(study, /experiences\//)
+  // (`focus-hanzi` is only the class name of the card front.)
+  assert.doesNotMatch(study, /\.hanzi|pinyin|hsk|\/api\//i)
+  assert.match(chinese, /<StudyModule[^>]*source=\{flashcardSource\}/)
+  assert.match(english, /<StudyModule[^>]*source=\{source\}/)
+  assert.doesNotMatch(english, /function EnglishFlashcardSession/)
+})
+
+test('Chinese progress keeps its storage key on the shared engine', async () => {
+  const storage = fakeWindow({ 'niorb:chinese-progress:v1': JSON.stringify({ vocabulary: { a: 'learned' }, cards: [{ vocabularyId: 'a', dueAt: '2026-01-01T00:00:00.000Z', intervalDays: 3, ease: 2.5, isNew: false, updatedAt: 5 }], studySync: {}, vocabularySync: {} }) })
+  const chinese = await importTs('src/experiences/chinese/device-progress.ts')
+  const progress = chinese.loadDeviceProgress()
+  assert.equal(progress.cards.length, 1)
+  assert.equal(progress.cards[0].intervalDays, 3)
+  assert.equal(progress.vocabulary.a, 'learned')
+  chinese.createCard(progress, 'b')
+  assert.deepEqual(JSON.parse(storage.get('niorb:chinese-progress:v1')).cards.map((card) => card.vocabularyId), ['a', 'b'])
+})
+
+test('old English flashcard progress moves into the engine once, and the old data is kept', async () => {
+  const legacy = JSON.stringify({ cards: ['seen', 'known'], learned: ['known'], reviews: 7, spelling: 2, quizCorrect: 1, quizAttempts: 3 })
+  const storage = fakeWindow({ 'niorb:english:progress:v1': legacy })
+  const english = await importTs('src/experiences/english/english-progress.ts')
+  assert.equal(english.migrateLegacyEnglishProgress(), 2)
+  const progress = english.englishProgressStore.load()
+  const byId = Object.fromEntries(progress.cards.map((card) => [card.vocabularyId, card]))
+  // Seen but not learned: due now. Learned: stays learned, scheduled as after a "Normal" answer.
+  assert.equal(byId.seen.isNew, false)
+  assert.ok(Date.parse(byId.seen.dueAt) <= Date.now())
+  assert.equal(byId.known.intervalDays, 2)
+  assert.equal(progress.vocabulary.known, 'learned')
+  assert.equal(progress.vocabulary.seen, undefined)
+  // Everything is queued for the server, the learned flag included.
+  assert.equal(progress.studySync.known.learned, true)
+  assert.equal(progress.studySync.seen.learned, false)
+  // Runs once; the old record is untouched.
+  assert.equal(english.migrateLegacyEnglishProgress(), 0)
+  assert.equal(storage.get('niorb:english:progress:v1'), legacy)
+  assert.equal(english.loadLegacyProgress().reviews, 7)
+})
+
+test('the English migration never overwrites cards the engine already has', async () => {
+  fakeWindow({
+    'niorb:english:progress:v1': JSON.stringify({ cards: ['word'], learned: [] }),
+    'niorb:english-flashcards:v1': JSON.stringify({ vocabulary: {}, cards: [{ vocabularyId: 'word', dueAt: '2030-01-01T00:00:00.000Z', intervalDays: 30, ease: 2.8, isNew: false, updatedAt: 9 }], studySync: {}, vocabularySync: {} }),
+  })
+  const english = await importTs('src/experiences/english/english-progress.ts')
+  assert.equal(english.migrateLegacyEnglishProgress(), 0)
+  assert.equal(english.englishProgressStore.load().cards[0].intervalDays, 30)
+})
+
+test('English flashcard progress syncs with the English database', async () => {
+  const handler = await source('worker/modules/english/handler.ts')
+  const study = await source('worker/modules/english/study.ts')
+  const schema = await source('migrations-english/0007_create_english_study_progress.sql')
+  const progress = await source('src/experiences/english/english-progress.ts')
+  assert.match(progress, /createStudySync\(englishProgressStore, '\/api\/english\/study\/progress'\)/)
+  assert.match(handler, /url\.pathname === '\/api\/english\/study\/progress'/)
+  assert.match(study, /if \(!user\) return Response\.json\(\{ error: 'Faça login para continuar\.' \}, \{ status: 401 \}\)/)
+  // Every row belongs to the signed-in learner, and an older change never replaces a newer one.
+  assert.match(study, /WHERE user_id = \?/)
+  assert.match(study, /WHERE excluded\.updated_at > english_study_cards\.updated_at/)
+  assert.match(schema, /CREATE TABLE english_study_cards/)
+  assert.match(schema, /PRIMARY KEY \(user_id, card_id\)/)
+  assert.doesNotMatch(schema, /DROP|ALTER TABLE/)
+})
+
+test('a large outbox is sent in chunks the servers accept', async () => {
+  fakeWindow()
+  Object.defineProperty(globalThis, 'navigator', { value: { onLine: true }, configurable: true })
+  const { createProgressStore } = await importTs('src/modules/study/engine/progress-store.ts')
+  const { createStudySync } = await importTs('src/modules/study/engine/study-sync.ts')
+  const store = createProgressStore({ storageKey: 'test-progress', changeEvent: 'test-progress' })
+  store.createCardsForVocabulary(store.load(), Array.from({ length: 1_234 }, (_, index) => `w${index}`))
+  const sent = []
+  const originalFetch = globalThis.fetch
+  globalThis.fetch = async (_url, init) => {
+    if (init?.method === 'PUT') { sent.push(JSON.parse(init.body).changes.length); return new Response('{}') }
+    return new Response(JSON.stringify({ cards: [], tombstones: [], vocabulary: [], revisions: { all: 1 } }))
+  }
+  try { await createStudySync(store, '/api/test').sync() } finally { globalThis.fetch = originalFetch }
+  assert.deepEqual(sent, [500, 500, 234])
+  assert.equal(Object.keys(store.load().studySync).length, 0)
 })
 
 test('offline mode caches only shared read-only content and the local access shell', async () => {

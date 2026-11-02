@@ -1,6 +1,7 @@
 import { knownEnglishEmoji } from './vocabulary-visuals.js'
 import { loadGrammarQuestions, loadGrammarTopics } from './grammar-quiz.js'
 import { handleEnglishDeckRequest } from './decks.js'
+import { handleEnglishStudyRequest } from './study.js'
 
 type EnglishVocabulary = {
   id: string
@@ -85,6 +86,8 @@ export async function handleEnglishRequest(request: Request, env: EnglishEnv, us
     const deckResponse = await handleEnglishDeckRequest(request, env, user)
     if (deckResponse) return deckResponse
   }
+
+  if (url.pathname === '/api/english/study/progress') return handleEnglishStudyRequest(request, env, user)
 
   if (url.pathname === '/api/english/preferences' && user) {
     const preferences = () => env.ENGLISH_DB.prepare('SELECT cefr_level, study_difficulty FROM english_user_preferences WHERE user_id = ?').bind(user.id).first<{ cefr_level: string; study_difficulty: string }>()

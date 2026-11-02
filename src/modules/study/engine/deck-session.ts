@@ -1,4 +1,4 @@
-import type { DeviceCard } from './device-progress'
+import type { DeviceCard } from './progress-store'
 
 /**
  * Order of the cards shown by one flashcard session of the deck, kept apart from the UI.

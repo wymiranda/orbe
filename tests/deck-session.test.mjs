@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { completeDeckStep, extraDeckSession, nextDeckStep, planDeckSession, plannedNewCards, sessionPresentationLimit } from '../src/experiences/chinese/deck-session.ts'
+import { completeDeckStep, extraDeckSession, nextDeckStep, planDeckSession, plannedNewCards, sessionPresentationLimit } from '../src/modules/study/engine/deck-session.ts'
 
 const now = '2026-10-29T12:00:00.000Z'
 const past = (minutes) => new Date(Date.parse(now) - minutes * 60_000).toISOString()
