@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react'
 import type { ListeningSentence, ListeningSource } from '../../modules/listen-build/ListenBuildModule'
+import { practiceRank } from './session-plan'
 import { chineseVoiceStatus, speakChinese } from './speech'
 import { choosableDifficulties, sessionHskLevels, studyDifficultyLabels, withinDifficulty, type StudyDifficulty } from './study-difficulty'
 
@@ -55,11 +56,11 @@ export function preferStudiedSentences(sentences: ListeningSentence[], studied: 
  *   words the learner has all learned, except on Brutal.
  *   Brutal is offered only at the HSK levels of `brutalLevels`.
  * - `focusWords` (daily session): sentences with one of these words (its new words) are played first,
- *   and those `playedLately` last.
+ *   then those with `difficultWords`, and those `playedLately` after the others (see practiceRank).
  * - `brutalBoost`: surprise Brutal rounds are more frequent on Difícil (see brutalSurpriseChances).
  * - `onBrutalCorrect` receives the ID of each surprise Brutal sentence answered correctly.
  */
-export function createChineseListeningSource({ maxLevel = 2, maxDifficulty, studiedWord, strict = false, choosable, focusWords = [], playedLately = () => false, brutalBoost = false, sentenceAction, onBrutalCorrect }: { maxLevel?: number; maxDifficulty?: StudyDifficulty; studiedWord?: (hanzi: string) => boolean; strict?: boolean; focusWords?: string[]; playedLately?: (sentence: ListeningSentence) => boolean; brutalBoost?: boolean; sentenceAction?: (sentence: ListeningSentence) => ReactNode; choosable?: { level: string; difficulty: StudyDifficulty; brutalLevels: string[] }; onBrutalCorrect?: (sentenceId: string) => void } = {}): ListeningSource {
+export function createChineseListeningSource({ maxLevel = 2, maxDifficulty, studiedWord, strict = false, choosable, focusWords = [], difficultWords = [], playedLately = () => false, brutalBoost = false, sentenceAction, onBrutalCorrect }: { maxLevel?: number; maxDifficulty?: StudyDifficulty; studiedWord?: (hanzi: string) => boolean; strict?: boolean; focusWords?: string[]; difficultWords?: string[]; playedLately?: (sentence: ListeningSentence) => boolean; brutalBoost?: boolean; sentenceAction?: (sentence: ListeningSentence) => ReactNode; choosable?: { level: string; difficulty: StudyDifficulty; brutalLevels: string[] }; onBrutalCorrect?: (sentenceId: string) => void } = {}): ListeningSource {
   return {
     language: 'zh-Hans',
     label: 'Mandarim',
@@ -85,8 +86,8 @@ export function createChineseListeningSource({ maxLevel = 2, maxDifficulty, stud
       // Brutal is the one exception: its sentences may hold words not learned yet.
       const preferred = studiedWord && difficulty !== 'brutal' ? preferStudiedSentences(offered, studiedWord, { strict: strict || Boolean(choosable) }) : offered
       return preferred.map((sentence) => {
-        const priority = (sentence.priority ?? 0) - (sentence.tokens.some((token) => focusWords.includes(token)) ? 2 : 0) + (playedLately(sentence) ? 1 : 0)
-        return priority === (sentence.priority ?? 0) ? sentence : { ...sentence, priority }
+        const rank = practiceRank({ focus: sentence.tokens.some((token) => focusWords.includes(token)), difficult: sentence.tokens.some((token) => difficultWords.includes(token)), recent: playedLately(sentence) })
+        return { ...sentence, priority: (sentence.priority ?? 0) * 10 + rank }
       })
     },
     async loadBrutalSentences() {

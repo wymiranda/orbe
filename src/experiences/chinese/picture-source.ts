@@ -1,4 +1,5 @@
 import type { PictureGameSource, PictureTerm } from '../../modules/scene-certa/SceneCertaModule'
+import { practiceRank } from './session-plan'
 import { speakChinese } from './speech'
 
 type ChineseVocabularyTerm = { id: string; hanzi: string; pinyin: string; portuguese: string; visual_kind: PictureTerm['visual_kind']; visual_value: string | null }
@@ -6,9 +7,9 @@ type ChineseVocabularyTerm = { id: string; hanzi: string; pinyin: string; portug
 /**
  * Supplies the Bate-olho game with Chinese vocabulary that has a picture.
  * With `studiedWord` (daily session) only words the learner has studied are played,
- * those of `focusWords` (the new words of the session) first.
+ * those of `focusWords` (the new words of the session) first, then `difficultWords`.
  */
-export function createChinesePictureSource({ studiedWord, focusWords = [] }: { studiedWord?: (hanzi: string) => boolean; focusWords?: string[] } = {}): PictureGameSource {
+export function createChinesePictureSource({ studiedWord, focusWords = [], difficultWords = [] }: { studiedWord?: (hanzi: string) => boolean; focusWords?: string[]; difficultWords?: string[] } = {}): PictureGameSource {
   return {
     language: 'zh-Hans',
     label: 'Mandarim',
@@ -25,7 +26,7 @@ export function createChinesePictureSource({ studiedWord, focusWords = [] }: { s
           meaning: term.portuguese,
           visual_kind: term.visual_kind,
           visual_value: term.visual_value,
-          ...(focusWords.includes(term.hanzi) ? { priority: -1 } : {}),
+          priority: practiceRank({ focus: focusWords.includes(term.hanzi), difficult: difficultWords.includes(term.hanzi), recent: false }),
         }))
     },
     speak: (term) => { speakChinese(term.prompt) },

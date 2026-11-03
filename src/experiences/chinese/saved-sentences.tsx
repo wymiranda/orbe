@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
 import { Bookmark, BookmarkCheck } from 'lucide-react'
 import type { FlashcardSource } from '../../modules/study/flashcard-source'
-import { createProgressStore } from '../../modules/study/engine/progress-store'
+import { dailyNewCardLimit } from '../../modules/study/engine/deck-session'
+import { createProgressStore, newCardsIntroducedToday } from '../../modules/study/engine/progress-store'
 import { toListeningSentence } from './listening-source'
 import { speakChinese } from './speech'
 
@@ -52,6 +53,27 @@ function useSavedSentenceIds() {
   return ids
 }
 
+/** Whether a saved sentence can be studied now: a new one (within the day's new cards) or one due. */
+function sentencesToStudy(ids: string[]) {
+  const progress = sentenceProgressStore.load()
+  const now = new Date().toISOString()
+  const cards = new Map(progress.cards.map((card) => [card.vocabularyId, card]))
+  const newAllowed = newCardsIntroducedToday(progress) < dailyNewCardLimit
+  return ids.some((id) => { const card = cards.get(id); return !card || card.isNew ? newAllowed : card.dueAt <= now })
+}
+
+/** "Estudar frases", beside the words' study button: opens the study of the saved sentences at once. */
+export function StudySentencesButton({ onStudy }: { onStudy: () => void }) {
+  const ids = useSavedSentenceIds()
+  const [, setTick] = useState(0)
+  useEffect(() => {
+    const refresh = () => setTick((tick) => tick + 1)
+    window.addEventListener(sentenceProgressStore.changeEvent, refresh)
+    return () => window.removeEventListener(sentenceProgressStore.changeEvent, refresh)
+  }, [])
+  return <button type="button" className="secondary" onClick={onStudy} disabled={!sentencesToStudy(ids)}>Estudar frases <span aria-hidden="true">→</span></button>
+}
+
 /** Small bookmark in a corner of a sentence game: marks the sentence to study later. */
 export function SaveSentenceButton({ sentenceId }: { sentenceId: string }) {
   const saved = useSavedSentenceIds().includes(sentenceId)
@@ -90,6 +112,7 @@ export function sentenceFlashcardSource(dashboardTop?: FlashcardSource<SentenceC
     loadVocabulary: loadSentenceCards,
     cachedVocabulary: () => { const cards = readJson<SentenceCard[]>(sentencesCacheKey, []); const saved = new Set(savedSentenceIds()); return Array.isArray(cards) ? cards.filter((card) => saved.has(card.id)) : [] },
     vocabularyEvent: savedSentencesEvent,
+    studyLabel: 'Estudar frases',
     face: (item) => ({ front: item.text, reading: item.reading, meaning: item.translation, detail: `HSK ${item.hsk_level}`, speech: item.text, frontClassName: 'focus-sentence' }),
     speak: speakChinese,
     dashboardTop,

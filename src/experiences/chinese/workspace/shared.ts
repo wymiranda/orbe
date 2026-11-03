@@ -26,6 +26,8 @@ export type CurrentUser = {
   brutal_notice?: boolean;
   /** Above 85% in each of the last five Difícil sessions: surprise Brutal rounds are more frequent on Difícil. */
   brutal_boost?: boolean;
+  /** HSK level the learner jumped to on their own: its words count as known until the games prove otherwise. */
+  placement_level?: string | null;
   study_suggestion?: StudySuggestion;
 } | null;
 

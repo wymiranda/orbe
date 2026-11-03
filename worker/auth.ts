@@ -1,6 +1,6 @@
 export type StudyDifficulty = 'easy' | 'medium' | 'hard' | 'brutal'
 export type StudySuggestion = { kind: 'difficulty'; difficulty: StudyDifficulty } | { kind: 'hsk'; hskLevel: string } | null
-export type User = { id: string; email: string; role: 'admin' | 'user'; is_teacher: boolean; display_name: string | null; self_assessed_hsk_level: string | null; session_duration_minutes: number | null; study_difficulty: StudyDifficulty }
+export type User = { id: string; email: string; role: 'admin' | 'user'; is_teacher: boolean; display_name: string | null; self_assessed_hsk_level: string | null; session_duration_minutes: number | null; study_difficulty: StudyDifficulty; placement_level: string | null }
 type StoredUser = User & { last_seen_at: string | null; study_suggestion_since: string | null }
 export type AuthEnv = {
   DB: D1Database
@@ -70,7 +70,7 @@ async function upsertUser(email: string, env: AuthEnv) {
 export async function currentUser(request: Request, env: AuthEnv) {
   const id = sessionId(request)
   if (!id) return null
-  const user = await env.DB.prepare(`SELECT users.id, users.email, users.role, (users.role = 'admin' OR EXISTS(SELECT 1 FROM teacher_profiles WHERE teacher_profiles.user_id = users.id)) AS is_teacher, users.display_name, users.self_assessed_hsk_level, users.session_duration_minutes, users.study_difficulty, users.study_suggestion_since, users.last_seen_at FROM auth_sessions JOIN users ON users.id = auth_sessions.user_id WHERE auth_sessions.id = ? AND auth_sessions.expires_at > ?`).bind(id, new Date().toISOString()).first<StoredUser>()
+  const user = await env.DB.prepare(`SELECT users.id, users.email, users.role, (users.role = 'admin' OR EXISTS(SELECT 1 FROM teacher_profiles WHERE teacher_profiles.user_id = users.id)) AS is_teacher, users.display_name, users.self_assessed_hsk_level, users.session_duration_minutes, users.study_difficulty, users.placement_level, users.study_suggestion_since, users.last_seen_at FROM auth_sessions JOIN users ON users.id = auth_sessions.user_id WHERE auth_sessions.id = ? AND auth_sessions.expires_at > ?`).bind(id, new Date().toISOString()).first<StoredUser>()
   const now = new Date().toISOString()
   if (user && user.last_seen_at?.slice(0, 10) !== now.slice(0, 10)) await env.DB.prepare('UPDATE users SET last_seen_at = ? WHERE id = ?').bind(now, user.id).run()
   return user ? { ...user, is_teacher: Boolean(user.is_teacher) } : null
@@ -115,6 +115,24 @@ async function studySuggestion(user: StoredUser, env: AuthEnv): Promise<StudySug
   if (user.study_difficulty === 'medium') return { kind: 'difficulty', difficulty: 'hard' }
   const next = String(Number(user.self_assessed_hsk_level ?? '1') + 1)
   return sessionHskLevels.includes(next) ? { kind: 'hsk', hskLevel: next } : null
+}
+
+const difficultyRank: Record<StudyDifficulty, number> = { easy: 0, medium: 1, hard: 2, brutal: 3 }
+
+/**
+ * The level a learner jumped to: raising the level or the difficulty on their own, not through the
+ * app's suggestion, takes the words up to that level as known (proven later by the games). Going
+ * down brings the jump down with it; a step by step progression keeps it as it was.
+ */
+export function placementAfter(user: StoredUser, next: { level: string | null; difficulty: StudyDifficulty }, suggested: StudySuggestion) {
+  const level = Number(next.level ?? '1') || 0
+  const current = Number(user.self_assessed_hsk_level ?? '1') || 0
+  const raised = level > current || (level === current && difficultyRank[next.difficulty] > difficultyRank[user.study_difficulty])
+  const followsSuggestion = suggested !== null && (suggested.kind === 'hsk' ? suggested.hskLevel === next.level : suggested.difficulty === next.difficulty && level === current)
+  const capped = Math.min(level, Number(sessionHskLevels[sessionHskLevels.length - 1]))
+  if (raised && !followsSuggestion && capped > 0) return String(Math.max(capped, Number(user.placement_level ?? 0)))
+  if (user.placement_level && capped < Number(user.placement_level)) return capped > 0 ? String(capped) : null
+  return user.placement_level
 }
 
 async function publicUser(user: StoredUser, env: AuthEnv) {
@@ -165,8 +183,9 @@ export async function handleAuth(request: Request, env: AuthEnv): Promise<Respon
     const changed = hskLevel !== user.self_assessed_hsk_level || difficulty !== user.study_difficulty
     const now = new Date().toISOString()
     const since = changed ? now : user.study_suggestion_since
-    if (changed) await env.DB.prepare('UPDATE users SET self_assessed_hsk_level = ?, study_difficulty = ?, study_suggestion_since = ?, updated_at = ? WHERE id = ?').bind(hskLevel, difficulty, since, now, user.id).run()
-    return Response.json({ user: await publicUser({ ...user, self_assessed_hsk_level: hskLevel, study_difficulty: difficulty, study_suggestion_since: since }, env) })
+    const placement = changed ? placementAfter(user, { level: hskLevel, difficulty }, await studySuggestion(user, env)) : user.placement_level
+    if (changed) await env.DB.prepare('UPDATE users SET self_assessed_hsk_level = ?, study_difficulty = ?, placement_level = ?, study_suggestion_since = ?, updated_at = ? WHERE id = ?').bind(hskLevel, difficulty, placement, since, now, user.id).run()
+    return Response.json({ user: await publicUser({ ...user, self_assessed_hsk_level: hskLevel, study_difficulty: difficulty, placement_level: placement, study_suggestion_since: since }, env) })
   }
 
   // "Agora não": the suggestion returns only after three more strong sessions.
@@ -221,8 +240,10 @@ export async function handleAuth(request: Request, env: AuthEnv): Promise<Respon
     const now = new Date().toISOString()
     // A new level starts a new count towards the next suggestion.
     const since = selfAssessedHskLevel !== null && selfAssessedHskLevel !== user.self_assessed_hsk_level ? now : user.study_suggestion_since
-    await env.DB.prepare('UPDATE users SET display_name = ?, self_assessed_hsk_level = COALESCE(?, self_assessed_hsk_level), session_duration_minutes = COALESCE(?, session_duration_minutes), study_suggestion_since = ?, updated_at = ? WHERE id = ?').bind(displayName || null, selfAssessedHskLevel, sessionDurationMinutes, since, now, user.id).run()
-    return Response.json({ user: await publicUser({ ...user, display_name: displayName || null, self_assessed_hsk_level: selfAssessedHskLevel ?? user.self_assessed_hsk_level, session_duration_minutes: sessionDurationMinutes ?? user.session_duration_minutes, study_suggestion_since: since }, env) })
+    // "Nível que você acredita ter" raised by hand is a jump too (the first sign-up, with no level yet, is not).
+    const placement = selfAssessedHskLevel !== null && user.self_assessed_hsk_level !== null && selfAssessedHskLevel !== user.self_assessed_hsk_level ? placementAfter(user, { level: selfAssessedHskLevel, difficulty: user.study_difficulty }, null) : user.placement_level
+    await env.DB.prepare('UPDATE users SET display_name = ?, self_assessed_hsk_level = COALESCE(?, self_assessed_hsk_level), session_duration_minutes = COALESCE(?, session_duration_minutes), placement_level = ?, study_suggestion_since = ?, updated_at = ? WHERE id = ?').bind(displayName || null, selfAssessedHskLevel, sessionDurationMinutes, placement, since, now, user.id).run()
+    return Response.json({ user: await publicUser({ ...user, display_name: displayName || null, self_assessed_hsk_level: selfAssessedHskLevel ?? user.self_assessed_hsk_level, session_duration_minutes: sessionDurationMinutes ?? user.session_duration_minutes, placement_level: placement, study_suggestion_since: since }, env) })
   }
 
   if (url.pathname === '/api/study-sessions' && request.method === 'POST') {

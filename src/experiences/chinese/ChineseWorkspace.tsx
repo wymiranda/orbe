@@ -9,19 +9,19 @@ import {
 import "../../App.css";
 import type { WritingPracticeItem } from "../../modules/writing/WritingModule";
 import type { QuizQuestion, QuizSource } from "../../modules/quiz/QuizModule";
-import { createCardsForVocabulary, loadDeviceProgress, rateCard } from "./device-progress";
+import { createCardsForVocabulary, loadDeviceProgress, loadOfflineVocabulary, rateCard, saveDeviceProgress, setVocabularyLearned } from "./device-progress";
 import { startStudySync } from "./study-sync";
 import { chineseFlashcardSource } from "./flashcard-source";
-import { SaveSentenceButton, sentenceFlashcardSource } from "./saved-sentences";
+import { SaveSentenceButton, StudySentencesButton, sentenceFlashcardSource } from "./saved-sentences";
 import { chineseQuizSource } from "./quiz-source";
 import { KnowledgeRepository } from "../../learning-paths/repository";
 import type { ActivityRequest, ActivityResult, KnowledgeSnapshot } from "../../learning-paths/types";
 import { LearningPathService } from "../../learning-paths/service";
 import { trailById } from "../../learning-paths/trails";
-import { onModuleActivity, recordModuleActivity } from "../../learning-paths/module-bridge";
+import { declareModuleKnowledge, onModuleActivity, recordModuleActivity } from "../../learning-paths/module-bridge";
 import { isIntroduced, isKnown } from "../../learning-paths/knowledge";
 import { practiceGamePlan, sessionGameOrder, type SessionGame } from "./session-games";
-import { buildableSentences, focusFirst, fragileWord, lastSessionWords, nextSessionKind, nextWordsToLearn, overdueReview, rememberSessionWords, sessionPace, starterWords, recentSessionSentences, rememberSessionSentences, reviewCatchUpTurn, weakWords, wordsReviewedBySentences } from "./session-plan";
+import { buildableSentences, difficultWords, focusFirst, fragileWord, newWordsPerSession, placementSentenceOrder, placementStatus, placementWords, lastSessionWords, nextSessionKind, nextWordsToLearn, overdueReview, rememberSessionWords, sessionPace, starterWords, recentSessionSentences, rememberSessionSentences, reviewCatchUpTurn, weakWords, wordsReviewedBySentences } from "./session-plan";
 import type { ListeningSource } from "../../modules/listen-build/ListenBuildModule";
 import { chinesePictureSource, createChinesePictureSource } from "./picture-source";
 import { createChineseListeningSource, sentenceContentId } from "./listening-source";
@@ -139,7 +139,11 @@ function ChineseWorkspace({ onChooseWorkspace = () => {}, onLogout = () => {} }:
   const sessionClock = useRef<number | null>(null);
   const sessionKind = useRef<"regular" | "practice">("regular");
   // Sentences of the session's level and difficulty; the games play those the learner can build when they start.
-  const sessionSentences = useRef<{ id: string; tokens: string[] }[]>([]);
+  const sessionSentences = useRef<{ id: string; level: string; tokens: string[] }[]>([]);
+  // A learner who jumped to a level: the words up to it still taken as known, playable in the games.
+  const sessionAssumed = useRef<Set<string>>(new Set());
+  // Words proven during this session (placement): they fly to the wall at its end.
+  const provenThisSession = useRef<string[]>([]);
   // Catalogue words of the session's level: the sentence game's hand holds only those already learned.
   const sessionVocabulary = useRef<string[]>([]);
   // Every catalogue word: overdue flashcards of any level can join the session's review.
@@ -229,7 +233,10 @@ function ChineseWorkspace({ onChooseWorkspace = () => {}, onLogout = () => {} }:
     // Every completed session ends on the summary, where the words of its study activity fly to
     // the wall: new words, or the words reviewed when a finished trail replays its first activity.
     const main = sessionMainActivity.current;
-    if (completed && studySessionLogId) setSessionSummary({ words: main?.moduleId === "study" && !learnSkipped.current ? main.content.map((content) => content.id) : [], reviewed: main?.mode === "verify" || main?.mode === "review" });
+    const proven = provenThisSession.current;
+    if (completed && studySessionLogId) setSessionSummary({ words: [...new Set([...(main?.moduleId === "study" && !learnSkipped.current ? main.content.map((content) => content.id) : []), ...proven])], reviewed: (main?.mode === "verify" || main?.mode === "review") && !proven.length });
+    provenThisSession.current = [];
+    sessionAssumed.current = new Set();
     learnSkipped.current = false;
     setStudySessionLogId(null);
     setSessionWritingItems(null);
@@ -283,11 +290,22 @@ function ChineseWorkspace({ onChooseWorkspace = () => {}, onLogout = () => {} }:
   /** The words this session is about: its new words, or the words a focus session works on (none in a practice session). */
   function sessionFocusWords() {
     const main = sessionMainActivity.current;
-    return main?.moduleId === "study" && (main.mode === "introduce" || main.mode === "review") && !learnSkipped.current ? main.content.map((content) => content.id) : [];
+    const own = main?.moduleId === "study" && (main.mode === "introduce" || main.mode === "review") && !learnSkipped.current ? main.content.map((content) => content.id) : [];
+    // After a jump, the words still to prove come first.
+    return own.length ? own : [...sessionAssumed.current];
   }
+  /** Words learned, plus, after a jump, the words still taken as known: what the session games may use. */
+  function sessionPlayable(snapshot: KnowledgeSnapshot | null, sessionResult: ActivityResult | null) {
+    const studied = studiedWord(snapshot, sessionResult);
+    return (hanzi: string) => studied(hanzi) || sessionAssumed.current.has(hanzi);
+  }
+  /** Words the learner finds hard right now (flashcards marked hard, words often missed): the games bring them back. */
+  function sessionDifficultWords() { return difficultWords(loadDeviceProgress().cards, knowledge); }
   /** Sentences the learner can build now, words learned in this session included; those with its new words first. */
   function sessionPracticeSentenceIds() {
-    return focusFirst(buildableSentences(sessionSentences.current, studiedWord(knowledge, pendingStudyResult.current)), sessionFocusWords(), Math.random, recentSessionSentences()).map((sentence) => sentence.id);
+    const ordered = focusFirst(buildableSentences(sessionSentences.current, sessionPlayable(knowledge, pendingStudyResult.current)), sessionFocusWords(), Math.random, recentSessionSentences(), sessionDifficultWords());
+    const placement = Math.min(Number(user?.placement_level ?? 0) || 0, sessionLevel);
+    return (placement && sessionAssumed.current.size ? placementSentenceOrder(ordered, String(placement), [...sessionAssumed.current]) : ordered).map((sentence) => sentence.id);
   }
   /** Plays the first available game of the queue; the rest are fallbacks. */
   function startSessionGame(queue: SessionGame[]) {
@@ -307,18 +325,18 @@ function ChineseWorkspace({ onChooseWorkspace = () => {}, onLogout = () => {} }:
       if (!plan) { startSessionGame(fallbacks); return; }
       playedSessionSentenceRounds.current = [...playedSessionSentenceRounds.current, ...plan.roundIds];
       rememberSessionSentences(plan.roundIds);
-      const known = studiedWord(knowledge, pendingStudyResult.current);
+      const known = sessionPlayable(knowledge, pendingStudyResult.current);
       setSessionKnownWords(sessionVocabulary.current.filter((word) => known(word)));
       setSessionSentenceRoundIds(plan.roundIds);
       setSection("multiplayer");
       return;
     }
     if (game === "listening") {
-      setSessionListeningSource(createChineseListeningSource({ strict: true, maxLevel: sessionLevel, maxDifficulty: user?.study_difficulty, studiedWord: studiedWord(knowledge, pendingStudyResult.current), focusWords: sessionFocusWords(), playedLately: (sentence) => (knowledge?.contents[sentence.contentIds[0]]?.updatedAt ?? 0) > Date.now() - playedLatelyMs, brutalBoost: Boolean(user?.brutal_boost), sentenceAction: saveSentenceAction, onBrutalCorrect: recordBrutalCorrect }));
+      setSessionListeningSource(createChineseListeningSource({ strict: true, maxLevel: sessionLevel, maxDifficulty: user?.study_difficulty, studiedWord: sessionPlayable(knowledge, pendingStudyResult.current), focusWords: sessionFocusWords(), difficultWords: sessionDifficultWords(), playedLately: (sentence) => (knowledge?.contents[sentence.contentIds[0]]?.updatedAt ?? 0) > Date.now() - playedLatelyMs, brutalBoost: Boolean(user?.brutal_boost), sentenceAction: saveSentenceAction, onBrutalCorrect: recordBrutalCorrect }));
       setSection("listen-build");
       return;
     }
-    setSessionPictureSource(createChinesePictureSource({ studiedWord: studiedWord(knowledge, pendingStudyResult.current), focusWords: sessionFocusWords() }));
+    setSessionPictureSource(createChinesePictureSource({ studiedWord: sessionPlayable(knowledge, pendingStudyResult.current), focusWords: sessionFocusWords(), difficultWords: sessionDifficultWords() }));
     setSessionPictureGame(true);
     setSection("scene-certa");
   }
@@ -425,6 +443,19 @@ function ChineseWorkspace({ onChooseWorkspace = () => {}, onLogout = () => {} }:
     if (!user) return;
     return startStudySync();
   }, [user]);
+  // After a jump, a word proven in the sentence games (see placementStatus) becomes a learned word;
+  // during a session it also flies to the wall at the end.
+  useEffect(() => {
+    const placement = Number(user?.placement_level ?? 0) || 0;
+    if (!placement || !knowledge) return;
+    const progress = loadDeviceProgress();
+    const learned = studiedWord(knowledge, null);
+    const proven = loadOfflineVocabulary().filter((term) => Number(term.hsk_level) <= placement && progress.vocabulary[term.id] !== "learned" && !learned(term.id) && placementStatus(knowledge, term.id) === "proven").map((term) => term.id);
+    if (!proven.length) return;
+    for (const id of proven) { setVocabularyLearned(progress, id); sessionAssumed.current.delete(id); void declareModuleKnowledge(id, "known"); }
+    saveDeviceProgress(progress);
+    if (studySessionLogId) provenThisSession.current = [...new Set([...provenThisSession.current, ...proven])];
+  }, [knowledge, user?.placement_level, studySessionLogId]);
   // A word used right in a sentence game while its flashcard is overdue counts as reviewed ("good").
   useEffect(() => onModuleActivity((result) => {
     if (result.language !== "zh-Hans") return;
@@ -494,6 +525,15 @@ function ChineseWorkspace({ onChooseWorkspace = () => {}, onLogout = () => {} }:
     const trail = trailById("zh-hans-hsk1-foundations");
     if (!trail) { setTrailError("A trilha inicial não está disponível."); return; }
     const studied = studiedWord(knowledge, null);
+    const vocabulary = await fetch("/api/chinese/vocabulary").then(async (response) => response.ok ? await response.json() as { id: string; hsk_level: string }[] : []).catch(() => []);
+    // A learner who jumped to a level plays that level at once: the words up to it count as known
+    // until the games prove otherwise; failed words are taught again; no trail (see placementWords).
+    const placementLevel = Math.min(Number(user?.placement_level ?? 0) || 0, sessionLevel);
+    const placing = placementLevel ? placementWords({ vocabulary, placement: placementLevel, learned: (id) => studied(id) || loadDeviceProgress().vocabulary[id] === "learned", snapshot: knowledge }) : { assumed: [], failed: [] };
+    const placingActive = placing.assumed.length > 0 || placing.failed.length > 0;
+    sessionAssumed.current = new Set(placing.assumed);
+    provenThisSession.current = [];
+    const playable = (id: string) => studied(id) || sessionAssumed.current.has(id);
     let buildable: string[] = [];
     // Only the sentences of the learner's level and difficulty: those are the ones the games play.
     let playedSentences: { id: string; level: string; difficulty: StudyDifficulty; tokens: string[] }[] = [];
@@ -501,15 +541,17 @@ function ChineseWorkspace({ onChooseWorkspace = () => {}, onLogout = () => {} }:
       const response = await fetch("/api/chinese/sentences");
       const catalogSentences = response.ok ? await response.json() as typeof playedSentences : [];
       playedSentences = catalogSentences.filter((sentence) => Number(sentence.level) <= sessionLevel && withinDifficulty(sentence.difficulty, user?.study_difficulty));
-      buildable = buildableSentences(playedSentences, studied).map((sentence) => sentence.id);
+      buildable = buildableSentences(playedSentences, playable).map((sentence) => sentence.id);
     } catch { /* without the sentence list the session is simply a regular one */ }
-    const vocabulary = await fetch("/api/chinese/vocabulary").then(async (response) => response.ok ? await response.json() as { id: string; hsk_level: string }[] : []).catch(() => []);
-    const kind = nextSessionKind(buildable.length, window.localStorage, vocabulary.filter((term) => studied(term.id)).length);
-    let activity = kind === "regular" ? await new LearningPathService().next(trail) : null;
+    const kind = placingActive ? (placing.failed.length ? "regular" : "practice") : nextSessionKind(buildable.length, window.localStorage, vocabulary.filter((term) => studied(term.id)).length);
+    const placementActivity: ActivityRequest = { id: `zh-hans:placement-words:${Date.now()}`, language: "zh-Hans", moduleId: "study", objective: "Palavras novas", skill: "recognition", mode: "introduce", content: placing.failed.slice(0, newWordsPerSession).map((id) => ({ id, kind: "lexeme" })) };
+    let activity = kind !== "regular" ? null : placingActive ? placementActivity : await new LearningPathService().next(trail);
     // A finished trail would replay its first activity: the session's pace decides instead between
     // new words of the learner's level and a session on the words that need it (see sessionPace).
     let focusSession = false;
-    if (activity?.mode === "verify") {
+    // A trail step whose words the learner already knows (proven after a jump, or marked as known) is done too.
+    const trailStepKnown = activity?.mode === "introduce" && !placingActive && activity.id.startsWith(trail.id) && activity.content.every((content) => studied(content.id));
+    if (activity?.mode === "verify" || trailStepKnown) {
       const deckCards = new Map(loadDeviceProgress().cards.map((card) => [card.vocabularyId, card]));
       const known = (id: string) => studied(id) || deckCards.get(id)?.isNew === false;
       const catalogued = new Set(vocabulary.map((term) => term.id));
@@ -526,6 +568,8 @@ function ChineseWorkspace({ onChooseWorkspace = () => {}, onLogout = () => {} }:
       if (words.length) activity = { id: `zh-hans:new-words:${Date.now()}`, language: "zh-Hans", moduleId: "study", objective: "Palavras novas", skill: "recognition", mode: "introduce", content: words.map((id) => ({ id, kind: "lexeme" })) };
       else if (focus.length) { activity = { id: `zh-hans:focus:${Date.now()}`, language: "zh-Hans", moduleId: "study", objective: "Revisão", skill: "recognition", mode: "review", content: focus.map((id) => ({ id, kind: "lexeme" })) }; focusSession = pace.focus === "weak"; }
       rememberSessionWords(words);
+      // Nothing new to teach: the known step is reviewed rather than taught again.
+      if (activity?.mode === "introduce" && !words.length) activity = { ...activity, mode: "review" };
     }
     if (kind === "regular" && !activity) { setTrailError("Você já concluiu as atividades disponíveis desta trilha."); return; }
     const logActivity = activity
@@ -676,11 +720,12 @@ function ChineseWorkspace({ onChooseWorkspace = () => {}, onLogout = () => {} }:
   const brutalLevelsKey = (user?.brutal_levels ?? []).join();
   const brutalLevels = useMemo(() => brutalLevelsKey ? brutalLevelsKey.split(",") : [], [brutalLevelsKey]);
   // The catalogue opens on the learner's level and difficulty; both can be changed before playing.
-  // The Flashcards tab studies words or the sentences saved from the games; each deck links to the other.
+  // The Flashcards tab studies words; "Estudar frases" opens straight on the sentences saved from
+  // the games, and leaving that study comes back here. Its own dashboard only shows when there is
+  // nothing to study, with the way back to the words.
   const [flashcardDeck, setFlashcardDeck] = useState<"words" | "sentences">("words");
-  const deckSwitch = (deck: "words" | "sentences", label: string) => () => <div className="flashcard-deck-switch"><button type="button" className="secondary" onClick={() => setFlashcardDeck(deck)}>{label}</button></div>;
-  const flashcardSource = useMemo(() => chineseFlashcardSource(user?.self_assessed_hsk_level ?? "1", deckSwitch("sentences", "Estudar frases")), [user?.self_assessed_hsk_level]);
-  const sentenceDeckSource = useMemo(() => sentenceFlashcardSource(deckSwitch("words", "Estudar palavras")), []);
+  const flashcardSource = useMemo(() => chineseFlashcardSource(user?.self_assessed_hsk_level ?? "1", () => <StudySentencesButton onStudy={() => setFlashcardDeck("sentences")} />), [user?.self_assessed_hsk_level]);
+  const sentenceDeckSource = useMemo(() => sentenceFlashcardSource(() => <div className="flashcard-deck-switch"><button type="button" className="secondary" onClick={() => setFlashcardDeck("words")}>Estudar palavras</button></div>), []);
   // The catalogue games play only words the learner has learned too; read through a ref so a new
   // result does not rebuild the game being played.
   const learnedWord = useRef<(hanzi: string) => boolean>(() => false);
@@ -700,7 +745,7 @@ function ChineseWorkspace({ onChooseWorkspace = () => {}, onLogout = () => {} }:
   else if (section === "flashcards") content = trailActivity?.anchor && !trailIntroductionSeen
     ? <TrailSentenceAnchor anchor={trailActivity.anchor} onStart={() => setTrailIntroductionSeen(true)} />
     : !trailActivity && flashcardDeck === "sentences"
-      ? <StudyModule key="sentences" source={sentenceDeckSource} embedded />
+      ? <StudyModule key="sentences" source={sentenceDeckSource} embedded autoStart onExit={() => setFlashcardDeck("words")} />
       : <StudyModule source={flashcardSource} embedded activity={trailActivity} activityStage={trailStudyStage} skipActivityIntroduction onComplete={completeTrailActivity} onExit={returnToTrailOrchestrator} />;
   else if (section === "writing") content = sessionWritingItems
     ? <WritingModule items={sessionWritingItems} embedded guidedOnly onComplete={beginTrailReview} onExit={returnToTrailOrchestrator} />

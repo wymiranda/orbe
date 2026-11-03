@@ -83,7 +83,8 @@ export function SessionSummary({ newWords, reviewed = false, level, vocabulary, 
 
 /**
  * The words learned flip over as cards, then fly to their place on the wall of
- * the learner's HSK level, which lights up. A large level is split into pages:
+ * the HSK level each word belongs to, which lights up: a session with words of two levels shows
+ * both walls, one after the other (the learner's level when nothing new). A large level is split into pages:
  * the wall opens on the page holding most of the words, and slides to another
  * page before the cards that belong there fly. Without motion (or without new
  * words) the wall is shown in its final state, on the page with the most words
@@ -99,8 +100,11 @@ export function NewWordsWall({ newWords, level, vocabulary }: { newWords: WallWo
     window.addEventListener("niorb:learning-knowledge", refresh);
     return () => window.removeEventListener("niorb:learning-knowledge", refresh);
   }, []);
-  const levelTerms = vocabulary.filter((term) => term.hsk_level === level);
-  const pages = wallPages(levelTerms);
+  // The walls of the levels the session's words belong to, the one with most of them first.
+  const countOf = (wallLevel: string) => newWords.filter((word) => word.hsk_level === wallLevel).length;
+  const wallLevels = newWords.length ? [...new Set(newWords.map((word) => word.hsk_level))].sort((left, right) => countOf(right) - countOf(left) || Number(left) - Number(right)) : [level];
+  const levelPages = wallLevels.flatMap((wallLevel) => wallPages(vocabulary.filter((term) => term.hsk_level === wallLevel)).map((terms) => ({ level: wallLevel, terms })));
+  const pages = levelPages.map((item) => item.terms);
   const pageOf = new Map(pages.flatMap((terms, page) => terms.map((term) => [term.id, page] as const)));
   const newIds = new Set(newWords.map((word) => word.id));
   // Pages holding the words of the session, most words first; the cards fly page by page in that order.
@@ -118,10 +122,14 @@ export function NewWordsWall({ newWords, level, vocabulary }: { newWords: WallWo
     const status = wordStatus(term.id, progress, knowledge);
     return newIds.has(term.id) && status === "new" ? "learning" : status;
   };
-  const masteredCount = levelTerms.filter((term) => statusOf(term) === "mastered").length;
+
   const learnedOn = (terms: WallWord[]) => terms.filter((term) => statusOf(term) !== "new").length;
   const mostLearnedPage = pages.reduce((best, terms, index) => learnedOn(terms) > learnedOn(pages[best]) ? index : best, 0);
   const shownPage = page ?? mostLearnedPage;
+  // The line under the wall counts the level on screen.
+  const shownLevel = levelPages[shownPage]?.level ?? level;
+  const levelTerms = vocabulary.filter((term) => term.hsk_level === shownLevel);
+  const masteredCount = levelTerms.filter((term) => statusOf(term) === "mastered").length;
 
   // The first tile to be reached is brought into view, so the flight ends where the learner is looking.
   useLayoutEffect(() => {
@@ -193,7 +201,7 @@ export function NewWordsWall({ newWords, level, vocabulary }: { newWords: WallWo
           {(pages[shownPage] ?? []).map((term) => <li key={term.id} ref={(element) => { if (element) tiles.current.set(term.id, element); else tiles.current.delete(term.id); }} className={[statusOf(term), newIds.has(term.id) && landed.has(term.id) ? "just-landed" : ""].filter(Boolean).join(" ")} title={`${term.hanzi} · ${term.pinyin} · ${term.portuguese}`} lang="zh-Hans">{term.hanzi}</li>)}
         </ul>
         {pages.length > 1 && <ol className="session-summary-wall-pages" aria-hidden="true">{pages.map((_, index) => <li key={index} className={index === shownPage ? "current" : ""} />)}</ol>}
-        <p>{masteredCount} de {levelTerms.length} palavras do HSK {level}</p>
+        <p>{masteredCount} de {levelTerms.length} palavras do HSK {shownLevel}</p>
       </section>
   </>;
 }

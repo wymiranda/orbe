@@ -95,12 +95,89 @@ export function nextWordsToLearn({ vocabulary, sentences, level, studied, limit 
 }
 
 /**
- * The sentences with a word of `focus` (the new words of the session) first, then the others;
- * in each group those not played lately (`recent`) come before those played lately, in random order.
+ * Order of what the session games play, lowest first:
+ * 0–1. with a new word of the session (`focus`): those are practised first;
+ * 2. with a word the learner finds hard (`difficult`), not played lately;
+ * 3. the others, not played lately;
+ * 4. with a hard word, played lately;
+ * 5. the others, played lately.
+ * Hard words come first, but never at the cost of variety: a hard sentence just played waits
+ * behind any sentence not seen lately.
  */
-export function focusFirst<T extends { id?: string; tokens: string[] }>(sentences: T[], focus: string[], random = Math.random, recent: string[] = []) {
-  const rank = (sentence: T) => (sentence.tokens.some((token) => focus.includes(token)) ? 0 : 2) + (sentence.id && recent.includes(sentence.id) ? 1 : 0)
+export function practiceRank({ focus, difficult, recent }: { focus: boolean; difficult: boolean; recent: boolean }) {
+  if (focus) return recent ? 1 : 0
+  if (recent) return difficult ? 4 : 5
+  return difficult ? 2 : 3
+}
+
+/** The sentences in practiceRank order, at random within a rank. */
+export function focusFirst<T extends { id?: string; tokens: string[] }>(sentences: T[], focus: string[], random = Math.random, recent: string[] = [], difficult: string[] = []) {
+  const rank = (sentence: T) => practiceRank({ focus: sentence.tokens.some((token) => focus.includes(token)), difficult: sentence.tokens.some((token) => difficult.includes(token)), recent: Boolean(sentence.id && recent.includes(sentence.id)) })
   return sentences.map((sentence) => ({ sentence, rank: rank(sentence), key: random() })).sort((left, right) => left.rank - right.rank || left.key - right.key).map((item) => item.sentence)
+}
+
+/**
+ * A learner who jumped to a level (placement) is taken to know the words up to it; the sentence
+ * games then show it, word by word, from how each word did in sentences (building and hearing):
+ * - proven: used in 3 sentences or more, 75% of them right: it becomes a learned word;
+ * - failed: 3 sentences or more under 50%: it is taught again the normal way;
+ * - otherwise still to prove.
+ * One wrong sentence counts against each of its words, so the thresholds leave room for that.
+ */
+export const provenUses = 3
+export const provenAccuracy = 0.75
+export const failedAccuracy = 0.5
+const sentenceEvidence = ['production', 'comprehension']
+
+export function sentenceUse(snapshot: KnowledgeSnapshot | null, id: string) {
+  const skills = Object.entries(snapshot?.contents[id]?.skills ?? {}).filter(([skill, value]) => sentenceEvidence.includes(skill) && value !== undefined).map(([, value]) => value!)
+  const attempts = skills.reduce((total, skill) => total + skill.attempts, 0)
+  return { attempts, accuracy: attempts ? skills.reduce((total, skill) => total + skill.successes, 0) / attempts : 0 }
+}
+export function placementStatus(snapshot: KnowledgeSnapshot | null, id: string): 'proven' | 'failed' | 'unproven' {
+  const use = sentenceUse(snapshot, id)
+  if (use.attempts < provenUses) return 'unproven'
+  return use.accuracy >= provenAccuracy ? 'proven' : use.accuracy < failedAccuracy ? 'failed' : 'unproven'
+}
+
+/** The words of a placement up to its level, not learned yet: those still taken as known, and those that failed. */
+export function placementWords({ vocabulary, placement, learned, snapshot }: { vocabulary: { id: string; hsk_level: string }[]; placement: number; learned: (id: string) => boolean; snapshot: KnowledgeSnapshot | null }) {
+  const open = vocabulary.filter((term) => Number(term.hsk_level) <= placement && !learned(term.id))
+  return {
+    assumed: open.filter((term) => placementStatus(snapshot, term.id) !== 'failed').map((term) => term.id),
+    failed: open.filter((term) => placementStatus(snapshot, term.id) === 'failed').map((term) => term.id),
+  }
+}
+
+/**
+ * Order of the sentences for a learner who jumped to `level`: that level's sentences, and one
+ * sentence of an earlier level after every three, only when it holds a word still to prove that
+ * no sentence of the level has. Earlier sentences with nothing to prove come last.
+ */
+export function placementSentenceOrder<T extends { level: string; tokens: string[] }>(ordered: T[], level: string, assumed: string[]) {
+  const current = ordered.filter((sentence) => sentence.level === level)
+  const coveredAtLevel = new Set(current.flatMap((sentence) => sentence.tokens))
+  const earlier = ordered.filter((sentence) => sentence.level !== level)
+  const useful = earlier.filter((sentence) => sentence.tokens.some((token) => assumed.includes(token) && !coveredAtLevel.has(token)))
+  const result: T[] = []
+  for (let index = 0, extra = 0; index < current.length || extra < useful.length;) {
+    for (let count = 0; count < 3 && index < current.length; count += 1) result.push(current[index++])
+    if (extra < useful.length) result.push(useful[extra++])
+  }
+  return [...result, ...earlier.filter((sentence) => !useful.includes(sentence))]
+}
+
+/** Flashcard ease under this: the card was marked "Difícil" or "Errei" more than "Fácil" lifted it back. */
+export const hardEase = 2.4
+
+/**
+ * Words the learner finds hard, the hardest first: flashcards they keep marking hard (low ease),
+ * then words they keep missing in the activities and have not recovered yet (see weakWords).
+ */
+export function difficultWords(cards: { vocabularyId: string; isNew: boolean; ease: number }[], snapshot: KnowledgeSnapshot | null) {
+  const byEase = cards.filter((card) => !card.isNew && card.ease < hardEase).sort((left, right) => left.ease - right.ease).map((card) => card.vocabularyId)
+  const missed = weakWords(snapshot, { limit: Number.POSITIVE_INFINITY, now: Number.POSITIVE_INFINITY })
+  return [...new Set([...byEase, ...missed])]
 }
 
 const recentRoundsKey = 'niorb:chinese:recent-session-sentences:v1'

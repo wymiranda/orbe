@@ -562,6 +562,39 @@ test('sentences saved from the games are kept per learner and studied as their o
   assert.match(workspace, /sentenceAction: saveSentenceAction/)
 })
 
+test('raising level or difficulty on one\'s own is a jump; following the suggestion is not', async () => {
+  const { placementAfter } = await importTs('worker/auth.ts')
+  const user = (level, difficulty, placement = null) => ({ self_assessed_hsk_level: level, study_difficulty: difficulty, placement_level: placement })
+  assert.equal(placementAfter(user('1', 'easy'), { level: '2', difficulty: 'hard' }, null), '2')
+  assert.equal(placementAfter(user('1', 'easy'), { level: '1', difficulty: 'hard' }, null), '1')
+  // Accepting the app's suggestion is a step, not a jump.
+  assert.equal(placementAfter(user('1', 'hard'), { level: '2', difficulty: 'hard' }, { kind: 'hsk', hskLevel: '2' }), null)
+  assert.equal(placementAfter(user('1', 'easy'), { level: '1', difficulty: 'medium' }, { kind: 'difficulty', difficulty: 'medium' }), null)
+  // Going down brings the jump down; staying keeps it.
+  assert.equal(placementAfter(user('2', 'hard', '2'), { level: '1', difficulty: 'hard' }, null), '1')
+  assert.equal(placementAfter(user('2', 'hard', '2'), { level: '2', difficulty: 'easy' }, null), '2')
+  assert.equal(placementAfter(user('1', 'easy', '1'), { level: '0', difficulty: 'easy' }, null), null)
+})
+
+test('after a jump, words are proven in sentences or taught again, and the level comes first', async () => {
+  const plan = await importTs('src/experiences/chinese/session-plan.ts')
+  const skill = (attempts, successes) => ({ attempts, successes, hints: 0, strength: 0, dueAt: 0, updatedAt: 0 })
+  const snapshot = { version: 1, updatedAt: 0, contents: {
+    '咖啡': { skills: { production: skill(2, 2), comprehension: skill(1, 1) }, mastered: false, updatedAt: 1 },
+    '机场': { skills: { production: skill(4, 1) }, mastered: false, updatedAt: 1 },
+    '药': { skills: { production: skill(2, 2) }, mastered: false, updatedAt: 1 },
+  } }
+  assert.equal(plan.placementStatus(snapshot, '咖啡'), 'proven')
+  assert.equal(plan.placementStatus(snapshot, '机场'), 'failed')
+  assert.equal(plan.placementStatus(snapshot, '药'), 'unproven')
+  const vocabulary = ['我', '咖啡', '机场', '药', '飞机'].map((id) => ({ id, hsk_level: id === '我' ? '1' : '2' })).concat({ id: '高', hsk_level: '3' })
+  assert.deepEqual(plan.placementWords({ vocabulary, placement: 2, learned: (id) => id === '我', snapshot }), { assumed: ['咖啡', '药', '飞机'], failed: ['机场'] })
+  const sentence = (id, level, tokens) => ({ id, level, tokens })
+  const ordered = [sentence('a', '2', ['咖啡']), sentence('old-useful', '1', ['飞机']), sentence('b', '2', ['药']), sentence('old', '1', ['我']), sentence('c', '2', ['咖啡']), sentence('d', '2', ['药'])]
+  // Three of the level, then one earlier sentence with a word no sentence of the level has; useless earlier ones last.
+  assert.deepEqual(plan.placementSentenceOrder(ordered, '2', ['咖啡', '药', '飞机']).map((item) => item.id), ['a', 'b', 'c', 'old-useful', 'd', 'old'])
+})
+
 test('progress per modality weighs every skill by its evidence', async () => {
   const { modalityMetric } = await importTs('src/learning-paths/metrics.ts')
   const skill = (modalities) => ({ attempts: 1, successes: 1, hints: 0, strength: 0, dueAt: 0, updatedAt: 0, modalities })
@@ -599,6 +632,20 @@ test('review-only sessions wait for nine known words', async () => {
   const storage = { getItem: (key) => store.get(key) ?? null, setItem: (key, value) => store.set(key, value) }
   assert.equal(plan.nextSessionKind(12, storage, 8), 'regular')
   assert.equal(plan.nextSessionKind(12, storage, 9), 'practice')
+})
+
+test('games bring back hard words after the new ones, without repeating what was just played', async () => {
+  const plan = await importTs('src/experiences/chinese/session-plan.ts')
+  const sentences = [
+    { id: 'plain', tokens: ['我', '喝', '茶'] }, { id: 'hard', tokens: ['我', '喜欢', '茶'] },
+    { id: 'hard-recent', tokens: ['她', '喜欢', '水'] }, { id: 'plain-recent', tokens: ['我', '吃', '苹果'] }, { id: 'new', tokens: ['他', '喝', '水'] },
+  ]
+  assert.deepEqual(plan.focusFirst(sentences, ['他'], () => 0.5, ['hard-recent', 'plain-recent'], ['喜欢']).map((sentence) => sentence.id), ['new', 'hard', 'plain', 'hard-recent', 'plain-recent'])
+  const cards = [{ vocabularyId: '喜欢', isNew: false, ease: 2.1 }, { vocabularyId: '茶', isNew: false, ease: 2.65 }, { vocabularyId: '水', isNew: false, ease: 2.3 }, { vocabularyId: '新', isNew: true, ease: 1.3 }]
+  const skill = (attempts, successes, strength) => ({ attempts, successes, hints: 0, strength, dueAt: 0, updatedAt: 0 })
+  const snapshot = { version: 1, updatedAt: 0, contents: { '吃': { skills: { recognition: skill(4, 1, 20) }, mastered: false, updatedAt: 1 } } }
+  // Lowest ease first, then words often missed; marked easy (high ease) or never reviewed: not hard.
+  assert.deepEqual(plan.difficultWords(cards, snapshot), ['喜欢', '水', '吃'])
 })
 
 test('sentences played lately go after the others, new words still first', async () => {

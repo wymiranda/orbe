@@ -52,6 +52,10 @@ export type FlashcardSource<T extends { id: string }> = {
   face(item: T): FlashcardFace
   /** Speaks a text; false when the browser cannot. */
   speak(text: string): boolean
+  /** Label of the dashboard's main study button ("Estudar cards" without it). */
+  studyLabel?: string
+  /** More study buttons beside the main one. */
+  heroActions?(context: FlashcardDashboardContext<T>): ReactNode
   dashboardTop?(context: FlashcardDashboardContext<T>): ReactNode
   dashboardBottom?(context: FlashcardDashboardContext<T>): ReactNode
   /** Extra content on the end screen of a deck session, given the cards it introduced. */

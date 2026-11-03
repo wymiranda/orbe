@@ -542,6 +542,8 @@ code { background: var(--surface-2); border-radius: 0.25rem; color: var(--ink); 
 /* A sentence on a flashcard is longer than a word: a smaller front. */
 .focus-hanzi.focus-sentence { font-size: clamp(1.8rem, 7vw, 2.8rem); line-height: 1.3; }
 .flashcard-deck-switch { display: flex; justify-content: flex-end; }
+.study-dashboard-hero-actions { display: flex; flex-wrap: wrap; gap: .6rem; justify-content: flex-end; }
+.study-dashboard-hero-actions button.secondary { background: var(--surface); border-color: var(--primary); color: var(--ink); }
 .writing-session-content .session-counter { color: var(--ink-2); font-size: .82rem; margin: 0 0 .55rem; text-align: center; }
 .writing-session .writing-canvas { width: min(100%, 26rem, calc(100svh - 20rem)); }
 .writing-session .guided-writer { min-height: 0; height: min(26rem, calc(100svh - 20rem)); }

@@ -58,7 +58,7 @@ function offeredCard(vocabularyId: string): DeviceCard { return { vocabularyId, 
 const firstWordAutoPlayDelay = 600
 const nextWordAutoPlayDelay = 350
 
-function StudyModule<T extends Item>({ source, vocabulary: givenVocabulary, offerVocabulary = false, embedded = false, activity, activityStage, skipActivityIntroduction = false, onComplete, onExit }: { source: FlashcardSource<T>; vocabulary?: T[]; offerVocabulary?: boolean; embedded?: boolean; activity?: ActivityRequest | null; activityStage?: 'learn' | 'review'; skipActivityIntroduction?: boolean; onComplete?: (result: ActivityResult) => void | Promise<void>; onExit?: () => void | Promise<void> }) {
+function StudyModule<T extends Item>({ source, vocabulary: givenVocabulary, offerVocabulary = false, embedded = false, activity, activityStage, skipActivityIntroduction = false, autoStart = false, onComplete, onExit }: { source: FlashcardSource<T>; /** Opens straight on the study, as soon as there is something to study. */ autoStart?: boolean; vocabulary?: T[]; offerVocabulary?: boolean; embedded?: boolean; activity?: ActivityRequest | null; activityStage?: 'learn' | 'review'; skipActivityIntroduction?: boolean; onComplete?: (result: ActivityResult) => void | Promise<void>; onExit?: () => void | Promise<void> }) {
   const { store } = source
   const [progress, setProgress] = useState<DeviceProgress>(() => store.load())
   const [loadedVocabulary, setLoadedVocabulary] = useState<T[]>(() => givenVocabulary ? [] : source.cachedVocabulary())
@@ -136,6 +136,13 @@ function StudyModule<T extends Item>({ source, vocabulary: givenVocabulary, offe
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [learningCardId])
 
+  const autoStarted = useRef(false)
+  useEffect(() => {
+    if (!autoStart || autoStarted.current || session || !canStudy) return
+    autoStarted.current = true
+    startSession()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoStart, canStudy, session])
   function deckCards() { return studyCards(store.load()) }
   function showDeckStep(deck: DeckSession) {
     const step = nextDeckStep(deck, deckCards(), new Date().toISOString())
@@ -251,7 +258,7 @@ function StudyModule<T extends Item>({ source, vocabulary: givenVocabulary, offe
   return <main className={embedded ? 'workspace-view' : 'app-shell'}>
     {!embedded && <header className="app-header"><a className="brand" href="/">orb<span>e</span></a></header>}
     <section className="welcome study-page study-dashboard">
-      <header className="study-dashboard-hero"><div><h1>Flashcards</h1><p>Revise, aprenda e consolide seu vocabulário</p></div><button type="button" onClick={startSession} disabled={!canStudy}>Estudar cards <span aria-hidden="true">→</span></button></header>
+      <header className="study-dashboard-hero"><div><h1>Flashcards</h1><p>Revise, aprenda e consolide seu vocabulário</p></div><div className="study-dashboard-hero-actions"><button type="button" onClick={startSession} disabled={!canStudy}>{source.studyLabel ?? 'Estudar cards'} <span aria-hidden="true">→</span></button>{source.heroActions?.(dashboard)}</div></header>
       {source.dashboardTop?.(dashboard)}
       {error && <p className="study-status" role="status">{error}</p>}
       <section className="study-dashboard-metrics" aria-label="Resumo dos flashcards"><article><span className="study-metric-icon review">▣</span><div><strong>{due.length}</strong><p>para revisar hoje</p><i><em style={{ width: `${Math.min(100, due.length * 8)}%` }} /></i></div></article><article><span className="study-metric-icon deck">◒</span><div><strong>{deckSize}</strong><p>no seu baralho</p><i><em style={{ width: `${Math.min(100, deckSize / Math.max(1, vocabulary.length) * 100)}%` }} /></i></div></article><article><span className="study-metric-icon learned">♜</span><div><strong>{learned}</strong><p>itens aprendidos</p><i><em style={{ width: `${Math.min(100, learned / Math.max(1, vocabulary.length) * 100)}%` }} /></i></div></article><article><span className="study-metric-icon streak">▦</span><div><strong>{streak}</strong><p>{streak === 1 ? 'dia de sequência' : 'dias de sequência'}</p><i><em style={{ width: `${Math.min(100, streak * 14)}%` }} /></i></div></article></section>
