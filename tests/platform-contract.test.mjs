@@ -595,6 +595,17 @@ test('after a jump, words are proven in sentences or taught again, and the level
   assert.deepEqual(plan.placementSentenceOrder(ordered, '2', ['咖啡', '药', '飞机']).map((item) => item.id), ['a', 'b', 'c', 'old-useful', 'd', 'old'])
 })
 
+test('a session review never brings back a card before its time, and plays at most one free round', async () => {
+  const workspace = await source('src/experiences/chinese/ChineseWorkspace.tsx')
+  // Reviews keep only due cards; with nothing due the session goes to its games.
+  assert.match(workspace, /card\.dueAt <= now; \}\);\s*const review = withOverdueReviews/)
+  assert.match(workspace, /if \(!review\.content\.length\) \{ startSessionGame\(sessionGameOrder\(\)\); return; \}/)
+  assert.match(workspace, /fragileWord\(knowledge, id\) && dueNow\(id\)/)
+  assert.match(workspace, /!freeRoundPlayed\.current && plan\.roundIds\.length >= 2/)
+  const handler = await source('worker/modules/multiplayer/handler.ts')
+  assert.match(handler, /soloSession && input\?\.freeRound === true && index === sentenceRounds\.length - 1 \? 'free'/)
+})
+
 test('progress per modality weighs every skill by its evidence', async () => {
   const { modalityMetric } = await importTs('src/learning-paths/metrics.ts')
   const skill = (modalities) => ({ attempts: 1, successes: 1, hints: 0, strength: 0, dueAt: 0, updatedAt: 0, modalities })

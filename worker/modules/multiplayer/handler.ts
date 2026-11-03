@@ -262,7 +262,7 @@ export class MultiplayerRoom {
 
     if (url.pathname === '/create' && request.method === 'POST') {
       if (await this.room()) return Response.json({ error: 'Código já utilizado.' }, { status: 409 })
-      const input = await request.json<{ level?: unknown; mode?: unknown; count?: unknown; game?: unknown; difficulty?: unknown; roundIds?: unknown; soloSession?: unknown; knownWords?: unknown }>().catch(() => null)
+      const input = await request.json<{ level?: unknown; mode?: unknown; count?: unknown; game?: unknown; difficulty?: unknown; roundIds?: unknown; soloSession?: unknown; knownWords?: unknown; freeRound?: unknown }>().catch(() => null)
       const level = typeof input?.level === 'string' ? input.level : ''
       const mode = input?.mode === 'recognition' || input?.mode === 'hsk-mock' ? input.mode : 'recognition'
       const game = input?.game === 'sentence' ? 'sentence' : 'flash'
@@ -278,7 +278,8 @@ export class MultiplayerRoom {
         const approvedSentenceRounds = roundsFromSentences(await loadChineseSentences(this.env.CHINESE_DB))
         const sentenceRounds = requestedRoundIds.length ? requestedRoundIds.map((id) => approvedSentenceRounds.find((round) => round.id === id)).filter((round): round is ApprovedSentenceRound => Boolean(round)) : roundsForDifficulty(approvedSentenceRounds, difficulty, level, [])
         if (!sentenceRounds.length || (!requestedRoundIds.length && sentenceRounds.length < 10)) return Response.json({ error: 'Ainda não há missões suficientes para este nível.' }, { status: 400 })
-        const roundModes = requestedRoundIds.length ? sentenceRounds.map(() => 'mission' as const) : shuffle(sentenceRounds.map((_, index) => index < Math.ceil(sentenceRounds.length / 2) ? 'mission' as const : 'free' as const))
+        // A session plays missions; with `freeRound`, its last round is a free one (any sentence).
+        const roundModes = requestedRoundIds.length ? sentenceRounds.map((_, index) => soloSession && input?.freeRound === true && index === sentenceRounds.length - 1 ? 'free' as const : 'mission' as const) : shuffle(sentenceRounds.map((_, index) => index < Math.ceil(sentenceRounds.length / 2) ? 'mission' as const : 'free' as const))
         const code = this.state.id.name ?? ''
         const approvedAnswers = approvedSentenceRounds.map((round) => round.answer)
         const referenceSentences = [...approvedAnswers, ...reviewedSentences.map((item) => tokenizeSentenceReference(item.sentence, approvedAnswers)).filter((tokens): tokens is string[] => tokens !== null)]

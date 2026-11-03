@@ -85,6 +85,10 @@ function trailQuizSource(activity: ActivityRequest, onComplete?: () => void | Pr
 }
 
 
+/** A free round in a session's "Construam uma frase": its chance, and the words needed to build freely. */
+const freeRoundChance = 0.5;
+const freeRoundMinimumWords = 8;
+
 /** The bookmark of the sentence games: saves the sentence for Flashcards → Estudar frases. */
 const saveSentenceAction = (sentence: { id: string }) => <SaveSentenceButton sentenceId={sentence.id} />;
 const saveRoundAction = (roundId: string) => <SaveSentenceButton sentenceId={roundId} />;
@@ -149,6 +153,9 @@ function ChineseWorkspace({ onChooseWorkspace = () => {}, onLogout = () => {} }:
   // Every catalogue word: overdue flashcards of any level can join the session's review.
   const sessionCatalogue = useRef<Set<string>>(new Set());
   const [sessionKnownWords, setSessionKnownWords] = useState<string[]>([]);
+  // "Construam uma frase" in a session: at most one free round (any sentence) per session, and only sometimes.
+  const [sessionFreeRound, setSessionFreeRound] = useState(false);
+  const freeRoundPlayed = useRef(false);
   // Games and sentence rounds already played in this session; a ref, because a game may
   // report its end through a callback captured several renders earlier.
   const playedSessionGames = useRef<SessionGame[]>([]);
@@ -326,7 +333,12 @@ function ChineseWorkspace({ onChooseWorkspace = () => {}, onLogout = () => {} }:
       playedSessionSentenceRounds.current = [...playedSessionSentenceRounds.current, ...plan.roundIds];
       rememberSessionSentences(plan.roundIds);
       const known = sessionPlayable(knowledge, pendingStudyResult.current);
-      setSessionKnownWords(sessionVocabulary.current.filter((word) => known(word)));
+      const knownWords = sessionVocabulary.current.filter((word) => known(word));
+      setSessionKnownWords(knownWords);
+      // Half the time, if none was played yet, the game keeps a mission, and there are words enough to build freely.
+      const free = !freeRoundPlayed.current && plan.roundIds.length >= 2 && knownWords.length >= freeRoundMinimumWords && Math.random() < freeRoundChance;
+      if (free) freeRoundPlayed.current = true;
+      setSessionFreeRound(free);
       setSessionSentenceRoundIds(plan.roundIds);
       setSection("multiplayer");
       return;
@@ -533,6 +545,7 @@ function ChineseWorkspace({ onChooseWorkspace = () => {}, onLogout = () => {} }:
     const placingActive = placing.assumed.length > 0 || placing.failed.length > 0;
     sessionAssumed.current = new Set(placing.assumed);
     provenThisSession.current = [];
+    freeRoundPlayed.current = false;
     const playable = (id: string) => studied(id) || sessionAssumed.current.has(id);
     let buildable: string[] = [];
     // Only the sentences of the learner's level and difficulty: those are the ones the games play.
@@ -558,7 +571,9 @@ function ChineseWorkspace({ onChooseWorkspace = () => {}, onLogout = () => {} }:
       const now = new Date().toISOString();
       const weak = weakWords(knowledge, { scheduledLater: (id) => { const card = deckCards.get(id); return Boolean(card && !card.isNew && card.dueAt > now); } }).filter((id) => catalogued.has(id));
       const lastWords = lastSessionWords();
-      const fragile = (lastWords ?? []).filter((id) => fragileWord(knowledge, id));
+      // A word just learned stays fragile for a while, but its card waits its interval: it only counts once due.
+      const dueNow = (id: string) => { const card = deckCards.get(id); return !card || card.isNew || card.dueAt <= now; };
+      const fragile = (lastWords ?? []).filter((id) => fragileWord(knowledge, id) && dueNow(id));
       const recent = recentSessionSentences();
       const buildableIds = new Set(buildable);
       const freshSentences = playedSentences.filter((sentence) => buildableIds.has(sentence.id) && !recent.includes(sentence.id) && !knowledge?.contents[sentenceContentId(sentence.tokens)]).length;
@@ -652,8 +667,24 @@ function ChineseWorkspace({ onChooseWorkspace = () => {}, onLogout = () => {} }:
       const contentIds = fresh.length ? fresh : catalogued;
       const taught = contentIds.length === activity.content.length ? activity : { ...activity, content: activity.content.filter((content) => contentIds.includes(content.id)) };
       sessionMainActivity.current = taught;
+      const reviewing = activity.mode === "verify" || activity.mode === "review";
+      if (reviewing) {
+        // A review only shows cards whose review is due (and the overdue ones): a card studied a
+        // moment ago waits its interval. Nothing due: the session goes straight to its games.
+        const now = new Date().toISOString();
+        const cards = new Map(loadDeviceProgress().cards.map((card) => [card.vocabularyId, card]));
+        const due = taught.content.filter((content) => { const card = cards.get(content.id); return !card || card.isNew || card.dueAt <= now; });
+        const review = withOverdueReviews({ ...taught, content: due });
+        setTrailActivity(review);
+        if (!review.content.length) { startSessionGame(sessionGameOrder()); return; }
+        createCardsForVocabulary(loadDeviceProgress(), review.content.map((content) => content.id));
+        setTrailStudyStage('review');
+        setTrailIntroductionSeen(false);
+        setSection("flashcards");
+        return;
+      }
       createCardsForVocabulary(loadDeviceProgress(), contentIds);
-      setTrailActivity(activity.mode === "verify" || activity.mode === "review" ? withOverdueReviews(taught) : taught);
+      setTrailActivity(taught);
       // Words already learned (a finished trail verifies its first activity) are reviewed, not presented again as new.
       setTrailStudyStage(activity.mode === "verify" || activity.mode === "review" ? 'review' : 'learn');
       setTrailIntroductionSeen(false);
@@ -764,7 +795,7 @@ function ChineseWorkspace({ onChooseWorkspace = () => {}, onLogout = () => {} }:
     content = <ListenBuildModule source={catalogListeningSource} embedded activity={trailActivity?.moduleId === "listen-build" ? trailActivity : null} onComplete={completeTrailActivity} onExit={returnToTrailOrchestrator} />;
   else if (section === "multiplayer")
     content = sessionSentenceRoundIds
-      ? <MultiplayerPresence onAcceptInvite={(code) => setGameRoom(code)}><MultiplayerModule vocabulary={sentenceGameVocabulary} key={sessionSentenceRoundIds.join(":")} sessionRoundIds={sessionSentenceRoundIds} sessionDifficulty={user?.study_difficulty} sessionLevel={String(sessionLevel)} sessionKnownWords={sessionKnownWords} sentenceAction={saveRoundAction} embeddedSession onSessionComplete={() => finishAfterSessionGame()} userId={user?.id ?? ""} isAdmin={user?.role === "admin"} /></MultiplayerPresence>
+      ? <MultiplayerPresence onAcceptInvite={(code) => setGameRoom(code)}><MultiplayerModule vocabulary={sentenceGameVocabulary} key={sessionSentenceRoundIds.join(":")} sessionRoundIds={sessionSentenceRoundIds} sessionDifficulty={user?.study_difficulty} sessionLevel={String(sessionLevel)} sessionKnownWords={sessionKnownWords} sessionFreeRound={sessionFreeRound} sentenceAction={saveRoundAction} embeddedSession onSessionComplete={() => finishAfterSessionGame()} userId={user?.id ?? ""} isAdmin={user?.role === "admin"} /></MultiplayerPresence>
       : activeGame === "scene-certa"
       ? <SceneCertaModule source={catalogPictureSource} embedded onExit={() => setActiveGame(null)} />
       : activeGame === "listen-build"
